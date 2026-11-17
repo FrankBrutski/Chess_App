@@ -37,7 +37,8 @@ export function Library() {
   return (
     <div className="page">
       <header className="page-header">
-        <h1 className="brand"><HexMark /> Apiary</h1>
+        <button type="button" className="icon-btn" onClick={() => navigate('/')} aria-label="Home">‹</button>
+        <h1 className="brand"><HexMark /> Openings</h1>
         {(hives?.length ?? 0) > 1 && (
           <button type="button" className="icon-btn small-text" onClick={() => setReorder(!reorder)}>{reorder ? 'Done' : 'Reorder'}</button>
         )}

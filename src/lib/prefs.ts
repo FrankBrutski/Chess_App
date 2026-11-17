@@ -141,3 +141,9 @@ export function setTheme(t: Theme) {
   write('theme', t === 'auto' ? null : t);
   applyTheme(t);
 }
+
+// ---------- Stings ----------
+
+/** Card lists and Next/Previous go newest first unless you flip it. */
+export const getStingsNewestFirst = () => read('stingsOldestFirst') !== '1';
+export const setStingsNewestFirst = (on: boolean) => write('stingsOldestFirst', on ? null : '1');

@@ -19,7 +19,12 @@ export interface MoveNode {
   nags: number[];
   shapes: Shape[];
   children: MoveNode[];
+  /** Stings only: what a line from the puzzle position is (set on its first move). */
+  tag?: LineTag;
 }
+
+/** best = the line to play; also = also wins; refute = a tempting move that fails; idea = explainer, never drilled. */
+export type LineTag = 'best' | 'also' | 'refute' | 'idea';
 
 export interface RootNode {
   id: 'root';
@@ -97,3 +102,49 @@ export interface Course {
   updatedAt: number;
 }
 
+
+// ---------- Tactics (Stings) ----------
+
+/** Inbox = just a screenshot; In progress = position set; Ready = has a best line and is drilled. */
+export type StingStatus = 'inbox' | 'progress' | 'ready';
+
+export type SourceKind = 'mine' | 'online' | 'otb' | 'video' | 'book';
+
+export interface StingSource {
+  kind?: SourceKind;
+  platform?: string;
+  timeControl?: string;
+  date?: string;
+  white?: string;
+  black?: string;
+  event?: string;
+  url?: string;
+  /** Free notes, e.g. "Round 5" or the video title. */
+  note?: string;
+}
+
+export interface Sting {
+  id: string;
+  status: StingStatus;
+  createdAt: number;
+  updatedAt: number;
+  /** The screenshot (or, once cropped, just the board) in the `shots` table. */
+  shotId?: string;
+  /** The screenshot has been cut down to just the board (the rest is not kept). */
+  cropped?: boolean;
+  /** Board shown from this side (defaults to the side to move). */
+  orientation?: 'white' | 'black';
+  fen?: string;
+  title?: string;
+  themes?: string[];
+  root?: RootNode;
+  source?: StingSource;
+}
+
+/** A compressed image kept only on this phone. */
+export interface Shot {
+  id: string;
+  blob: Blob;
+  width: number;
+  height: number;
+}

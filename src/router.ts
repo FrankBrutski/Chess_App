@@ -5,6 +5,12 @@ export function navigate(path: string) {
   window.location.hash = path;
 }
 
+/** Back to where you came from inside the app, or to `fallback` when opened directly. */
+export function goBack(fallback = '/') {
+  if (window.history.length > 1) window.history.back();
+  else navigate(fallback);
+}
+
 export function useRoute(): string[] {
   const read = () => window.location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
   const [parts, setParts] = useState(read);

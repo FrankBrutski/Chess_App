@@ -2,3 +2,13 @@ node_modules
 dist
 *.tsbuildinfo
 public/engine/
+
+# Safety net: your screenshots and backups never belong in this public repo.
+*.jpg
+*.jpeg
+*.heic
+*.webp
+apiary-backup*
+*-backup*.json
+*.zip
+/screenshots/
