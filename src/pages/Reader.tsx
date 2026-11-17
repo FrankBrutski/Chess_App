@@ -15,6 +15,8 @@ import { ChapterText, type Ghost } from '../components/ChapterText';
 import { navigate } from '../router';
 import { getAutoLink, getBoldNotation, getEngineOn, setEngineOn } from '../lib/prefs';
 import { EnginePanel } from '../components/EnginePanel';
+import { LineText } from '../components/LineText';
+import { splitLines, type Line } from '../lib/lines';
 
 const strip = (san: string) => san.replace(/[+#!?]/g, '');
 
@@ -27,7 +29,7 @@ function positionOf(fen: string) {
 
 type Feedback = { kind: 'good' | 'bad' | 'info' | 'done'; text: string } | undefined;
 
-export function Reader({ chapterId, startNodeId }: { chapterId: string; startNodeId?: string }) {
+export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapterId: string; startNodeId?: string; lineId?: string; lineNodeId?: string }) {
   const chapter = useLiveQuery(() => db.chapters.get(chapterId), [chapterId]);
   const siblings = useLiveQuery(async () => (chapter ? chaptersOf(chapter.courseId) : []), [chapter?.courseId]);
   const course = useLiveQuery(async () => (chapter ? db.courses.get(chapter.courseId) : undefined), [chapter?.courseId]);
@@ -36,6 +38,13 @@ export function Reader({ chapterId, startNodeId }: { chapterId: string; startNod
   const order = useMemo(() => (chapter ? docOrder(chapter.root) : []), [chapter]);
   const orderIndex = useMemo(() => new Map(order.map((id, i) => [id, i])), [order]);
   const annotations = useMemo(() => (chapter ? annotateChapter(chapter.root, { auto: getAutoLink() }) : new Map()), [chapter]);
+  const lines = useMemo(() => (chapter ? splitLines(chapter.root, chapter.orientation, chapter.lineNames) : []), [chapter]);
+  // Line view (one line at a time, Chessable style) is the default; "Whole study" shows the full tree.
+  const [mode, setMode] = useState<'line' | 'study'>(startNodeId ? 'study' : 'line');
+  const [lineKey, setLineKey] = useState(lineId ?? 'main');
+  const [drawer, setDrawer] = useState(false);
+  const line: Line | undefined = mode === 'line' ? lines.find((l) => l.id === lineKey) ?? lines[0] : undefined;
+  const lineIndex = useMemo(() => new Map(line?.nodes.map((n, i) => [n.id, i]) ?? []), [line]);
 
   const [currentId, setCurrentId] = useState('root');
   const [ghost, setGhost] = useState<Ghost>();
@@ -50,15 +59,27 @@ export function Reader({ chapterId, startNodeId }: { chapterId: string; startNod
 
   // Reset when switching chapters (or jumping to a spot from the issues list).
   useEffect(() => {
-    setCurrentId(startNodeId ?? 'root');
+    setCurrentId(startNodeId ?? lineNodeId ?? 'root');
+    setMode(startNodeId ? 'study' : 'line');
+    setLineKey(lineId ?? 'main');
+    setDrawer(false);
     setGhost(undefined);
     setPlay(undefined);
     setFeedback(undefined);
     setCollapsed(new Set());
     if (!startNodeId) textRef.current?.scrollTo({ top: 0 });
-  }, [chapterId, startNodeId]);
+  }, [chapterId, startNodeId, lineId, lineNodeId]);
 
   const node: TreeNode | undefined = idx?.byId.get(currentId) ?? chapter?.root;
+
+  /** The move after `id`: along the open line in line view, else the main continuation. */
+  const nextOf = useCallback(
+    (id: string): MoveNode | undefined => {
+      if (line) return line.nodes[(id === 'root' ? -1 : lineIndex.get(id) ?? -2) + 1];
+      return idx?.byId.get(id)?.children[0];
+    },
+    [line, lineIndex, idx],
+  );
   const userColor = chapter?.orientation ?? 'white';
 
   // ----- Visibility in play-along: show everything up to (not including) the next main move -----
@@ -96,12 +117,12 @@ export function Reader({ chapterId, startNodeId }: { chapterId: string; startNod
       if (ghost.index < ghost.line.length - 1) setGhost({ ...ghost, index: ghost.index + 1 });
       return;
     }
-    const next = node?.children[0];
+    const next = nextOf(currentId);
     if (!next) return;
     if (play && currentId === play.frontier) return; // in play-along you make the move yourself
     if (!isVisible(next.id)) return;
     setCurrentId(next.id);
-  }, [ghost, node, play, currentId, isVisible]);
+  }, [ghost, nextOf, play, currentId, isVisible]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -136,10 +157,13 @@ export function Reader({ chapterId, startNodeId }: { chapterId: string; startNod
   useEffect(() => {
     if (!play || !idx) return;
     const f = idx.byId.get(play.frontier);
-    const next = f?.children[0];
+    const next = nextOf(play.frontier);
     if (!f) return;
     if (!next) {
-      setFeedback({ kind: 'done', text: 'End of this line. Pick a variation in the text to keep exploring, or restart.' });
+      setFeedback({
+        kind: 'done',
+        text: line ? `End of line ${line.number}.` : 'End of this line. Pick a variation in the text to keep exploring, or restart.',
+      });
       return;
     }
     const isUserMove = (isWhiteMove(next.ply) ? 'white' : 'black') === userColor;
@@ -149,11 +173,11 @@ export function Reader({ chapterId, startNodeId }: { chapterId: string; startNod
       setCurrentId(next.id);
     }, 550);
     return () => clearTimeout(t);
-  }, [play, idx, userColor]);
+  }, [play, idx, userColor, nextOf, line]);
 
   const viewing = !!play && (currentId !== play.frontier || !!ghost);
   const frontierNode = play ? idx?.byId.get(play.frontier) : undefined;
-  const expected = frontierNode?.children[0];
+  const expected = play ? nextOf(play.frontier) : undefined;
   const awaitingUser =
     !!play && !viewing && !!expected && (isWhiteMove(expected.ply) ? 'white' : 'black') === userColor;
 
@@ -186,16 +210,19 @@ export function Reader({ chapterId, startNodeId }: { chapterId: string; startNod
         return;
       }
       const alt = frontierNode.children.find((c) => strip(c.san) === strip(san));
+      const altLine = alt && line ? lines.find((l) => l !== line && l.nodes.includes(alt)) : undefined;
       setFeedback({
         kind: 'bad',
-        text: alt
-          ? `${san} is covered in the text as a side line. Try the repertoire move.`
-          : `${san} isn't the repertoire move. Try again or tap Hint.`,
+        text: altLine
+          ? `${san} is line ${altLine.number} (${altLine.name}). This line plays ${expected.san}.`
+          : alt
+            ? `${san} is covered in the text as a side line. Try the repertoire move.`
+            : `${san} isn't the repertoire move. Try again or tap Hint.`,
       });
       // Put the piece back.
       setResetKey((k) => k + 1);
     },
-    [frontierNode, expected],
+    [frontierNode, expected, line, lines],
   );
 
   const showHint = () => {
@@ -210,7 +237,27 @@ export function Reader({ chapterId, startNodeId }: { chapterId: string; startNod
   const boardFen = ghost ? ghost.line[ghost.index].fen : node.fen;
   const lastMove = ghost ? ghost.line[ghost.index].uci : (node as MoveNode).uci;
   const shapes = ghost ? [] : node.shapes;
-  const branches = !ghost && !play && node.children.length > 1 ? node.children : [];
+  const branches = !line && !ghost && !play && node.children.length > 1 ? node.children : [];
+  const openLine = (l: Line) => {
+    setPlay(undefined);
+    setFeedback(undefined);
+    setGhost(undefined);
+    setHint([]);
+    setMode('line');
+    setLineKey(l.id);
+    setDrawer(false);
+    // Show the position where the line branches off.
+    setCurrentId(l.shared > 0 ? l.nodes[l.shared - 1].id : 'root');
+    textRef.current?.scrollTo({ top: 0 });
+  };
+  const lineNo = line ? line.number - 1 : -1;
+  const renameLine = (l: Line, name: string) =>
+    db.chapters.where('id').equals(chapter.id).modify((c) => {
+      const names = { ...(c.lineNames ?? {}) };
+      if (name.trim() && name.trim() !== l.label) names[l.id] = name.trim();
+      else delete names[l.id];
+      c.lineNames = names;
+    });
   const chIndex = siblings?.findIndex((c) => c.id === chapter.id) ?? -1;
   const prevCh = chIndex > 0 ? siblings![chIndex - 1] : undefined;
   const nextCh = siblings && chIndex >= 0 && chIndex < siblings.length - 1 ? siblings[chIndex + 1] : undefined;
@@ -240,6 +287,44 @@ export function Reader({ chapterId, startNodeId }: { chapterId: string; startNod
           <button type="button" className="icon-btn" disabled={!nextCh} onClick={() => nextCh && navigate(`/read/${nextCh.id}`)} aria-label="Next comb (chapter)" title="Next comb">⟩</button>
         </div>
       </header>
+
+      <div className="line-bar">
+        {line ? (
+          <>
+            <button type="button" className="icon-btn" disabled={lineNo <= 0} onClick={() => openLine(lines[lineNo - 1])} aria-label="Previous line">‹</button>
+            <button type="button" className="line-pick" onClick={() => setDrawer(!drawer)} aria-expanded={drawer}>
+              <span className="line-num">Line {line.number}/{lines.length}</span>
+              <span className="line-name">{line.name}</span>
+              <span aria-hidden="true">▾</span>
+            </button>
+            <button type="button" className="icon-btn" disabled={lineNo >= lines.length - 1} onClick={() => openLine(lines[lineNo + 1])} aria-label="Next line">›</button>
+          </>
+        ) : (
+          <button type="button" className="line-pick" onClick={() => setDrawer(!drawer)} aria-expanded={drawer}>
+            <span className="line-name">Whole study · {lines.length} lines</span>
+            <span aria-hidden="true">▾</span>
+          </button>
+        )}
+        <button
+          type="button"
+          className="icon-btn small-text"
+          onClick={() => {
+            setPlay(undefined);
+            setFeedback(undefined);
+            setGhost(undefined);
+            if (line) setMode('study');
+            else {
+              setMode('line');
+              const through = lines.find((l) => l.nodes.some((n) => n.id === currentId));
+              if (through) setLineKey(through.id);
+            }
+          }}
+          title={line ? 'Show the whole study with every line' : 'Show one line at a time'}
+        >
+          {line ? 'Whole' : 'Lines'}
+        </button>
+      </div>
+      {drawer && <LineList lines={lines} current={line} onOpen={openLine} onRename={renameLine} onClose={() => setDrawer(false)} />}
 
       <div className="reader-body">
         <div className="board-pane">
@@ -292,7 +377,7 @@ export function Reader({ chapterId, startNodeId }: { chapterId: string; startNod
                 <button type="button" className="primary" onClick={stopPlay}>Stop</button>
               </>
             ) : (
-              <button type="button" className="primary" onClick={startPlay} disabled={!node.children.length} title="Forage: play along and learn this line">
+              <button type="button" className="primary" onClick={startPlay} disabled={!nextOf(currentId)} title="Forage: play along and learn this line">
                 Forage
               </button>
             )}
@@ -309,6 +394,23 @@ export function Reader({ chapterId, startNodeId }: { chapterId: string; startNod
         </div>
 
         <div className="text-pane" ref={textRef}>
+          {line ? (
+            <LineText
+              key={line.id}
+              root={chapter.root}
+              line={line}
+              lines={lines}
+              annotations={annotations}
+              currentId={currentId}
+              ghost={ghost}
+              visibleUpTo={play ? (play.frontier === 'root' ? -1 : lineIndex.get(play.frontier)) : undefined}
+              onSelect={(id) => select(id)}
+              onGhost={(g) => { setHint([]); setGhost(g); }}
+              onOpenLine={openLine}
+              boldNotation={getBoldNotation()}
+              hideBranches={!!play}
+            />
+          ) : (
           <ChapterText
             root={chapter.root}
             annotations={annotations}
@@ -328,17 +430,88 @@ export function Reader({ chapterId, startNodeId }: { chapterId: string; startNod
             onGhost={(g) => { setHint([]); setGhost(g); }}
             boldNotation={getBoldNotation()}
           />
+          )}
           {play && feedback?.kind === 'done' && (
             <div className="done-actions">
               <button type="button" onClick={() => { select('root'); setPlay({ frontier: 'root' }); setFeedback(undefined); }}>
-                Restart comb
+                {line ? 'Restart line' : 'Restart comb'}
               </button>
+              {line && lineNo < lines.length - 1 && (
+                <button type="button" className="primary" onClick={() => openLine(lines[lineNo + 1])}>Next line</button>
+              )}
               <button type="button" onClick={stopPlay}>Back to reading</button>
             </div>
           )}
           <div className="text-end-spacer" />
         </div>
       </div>
+    </div>
+  );
+}
+
+function LineList({ lines, current, onOpen, onRename, onClose }: {
+  lines: Line[];
+  current?: Line;
+  onOpen: (l: Line) => void;
+  onRename: (l: Line, name: string) => void;
+  onClose: () => void;
+}) {
+  const [q, setQ] = useState('');
+  const [editing, setEditing] = useState<string>();
+  const needle = q.trim().toLowerCase().replace(/\s+/g, ' ');
+  const matches = (l: Line) => {
+    if (!needle) return true;
+    const moves = l.nodes.map((n) => `${moveNumber(n.ply)}${n.san}`).join(' ').toLowerCase();
+    const sans = l.nodes.map((n) => n.san).join(' ').toLowerCase();
+    return [l.name, l.label, `line ${l.number}`, moves, sans].some((t) => t.toLowerCase().replace(/…/g, '...').includes(needle.replace(/…/g, '...')) || t.toLowerCase().includes(needle));
+  };
+  const shown = lines.filter(matches);
+  return (
+    <div className="line-drawer">
+      <div className="row">
+        <input
+          type="search"
+          placeholder="Find a line: name or moves (e.g. Nf6 Ng5)"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          aria-label="Find a line"
+        />
+        <button type="button" onClick={onClose}>Close</button>
+      </div>
+      <ol className="line-list">
+        {shown.map((l) => (
+          <li key={l.id} className={l === current ? 'current' : undefined}>
+            {editing === l.id ? (
+              <form
+                className="row"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const v = new FormData(e.currentTarget).get('name');
+                  void onRename(l, String(v ?? ''));
+                  setEditing(undefined);
+                }}
+              >
+                <input name="name" defaultValue={l.name} autoFocus aria-label={`Name for line ${l.number}`} />
+                <button type="submit">Save</button>
+              </form>
+            ) : (
+              <>
+                <button type="button" className="line-row" onClick={() => onOpen(l)}>
+                  <span className="line-num">{l.number}</span>
+                  <span className="line-row-text">
+                    <span className="line-name">{l.name}</span>
+                    {l.name !== l.label && <span className="muted small"> · {l.label}</span>}
+                    {!l.trainable && <span className="tag">reading only</span>}
+                  </span>
+                </button>
+                <button type="button" className="icon-btn small-text" onClick={() => setEditing(l.id)} aria-label={`Rename line ${l.number}`}>✎</button>
+              </>
+            )}
+          </li>
+        ))}
+        {shown.length === 0 && <li className="muted small">No line matches.</li>}
+      </ol>
+      <p className="muted small">Name a line by tapping ✎, or in Lichess by writing [Line: name] in the comment on the move where it branches.</p>
     </div>
   );
 }

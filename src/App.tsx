@@ -9,7 +9,7 @@ import { IssuesPage } from './pages/Issues';
 import { requestPersistence } from './lib/db';
 
 export function App() {
-  const [page, id, sub] = useRoute();
+  const [page, id, sub, sub2] = useRoute();
   useEffect(() => {
     void requestPersistence();
   }, []);
@@ -18,6 +18,8 @@ export function App() {
       return <CoursePage courseId={id} />;
     case 'read':
       return <Reader chapterId={id} startNodeId={sub} />;
+    case 'line':
+      return <Reader chapterId={id} lineId={sub ? decodeURIComponent(sub) : undefined} lineNodeId={sub2} />;
     case 'import':
       return <ImportPage courseId={id} sectionId={sub} />;
     case 'issues':

@@ -1,4 +1,5 @@
 import type { RootNode, TreeNode } from './model';
+import { stripLineMarker } from './lines';
 import { parseCommentMoves, type CommentPiece, type ParseOptions } from './commentMoves';
 
 export interface NodeAnnotations {
@@ -11,10 +12,11 @@ export function annotateChapter(root: RootNode, opts: ParseOptions = {}): Map<st
   const out = new Map<string, NodeAnnotations>();
   const walk = (n: TreeNode, ancestors: TreeNode[]) => {
     const parentAnc = ancestors; // positions before this move
-    const before = n.id === 'root' ? [] : ((n as { startingComments: string[] }).startingComments ?? []).map((c) =>
+    const clean = (list: string[]) => list.map(stripLineMarker).filter(Boolean);
+    const before = n.id === 'root' ? [] : clean((n as { startingComments: string[] }).startingComments ?? []).map((c) =>
       parseCommentMoves(c, ancestors[ancestors.length - 1], parentAnc.slice(0, -1), opts),
     );
-    const after = n.comments.map((c) => parseCommentMoves(c, n, ancestors, opts));
+    const after = clean(n.comments).map((c) => parseCommentMoves(c, n, ancestors, opts));
     out.set(n.id, { before, after });
     const next = [...ancestors, n];
     for (const c of n.children) walk(c, next);

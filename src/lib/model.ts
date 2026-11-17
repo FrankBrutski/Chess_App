@@ -56,6 +56,8 @@ export interface Chapter {
   lichessChapterId?: string;
   root: RootNode;
   issues?: Issue[];
+  /** Your own names for lines, by line id (see lib/lines.ts). Kept across re-syncs. */
+  lineNames?: Record<string, string>;
   importedAt: number;
 }
 

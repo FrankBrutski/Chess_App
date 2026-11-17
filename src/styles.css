@@ -286,3 +286,38 @@ details.section:not([open]) > summary::before { content: '▸'; }
 .engine-line:disabled { opacity: 1; cursor: default; }
 .engine-line-score { font-weight: 700; min-width: 48px; font-variant-numeric: tabular-nums; }
 .engine-line-moves { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- lines (one line at a time) ---------- */
+.line-bar { display: flex; align-items: center; gap: 4px; padding: 0 8px 6px; border-bottom: 1px solid var(--line); }
+.line-pick {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 6px 10px; min-height: 36px;
+  border-radius: 10px; border: 1px solid var(--line); background: var(--surface); text-align: left; font-size: 15px;
+}
+.line-pick .line-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.line-num { color: var(--honey-deep); font-weight: 700; font-size: 13px; white-space: nowrap; }
+.line-drawer {
+  padding: 8px 12px 10px; border-bottom: 1px solid var(--line); background: var(--surface);
+  max-height: 55vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+}
+.line-drawer input[type=search], .line-drawer input[name=name] { flex: 1; min-width: 0; }
+.line-list { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.line-list li { display: flex; align-items: center; gap: 4px; }
+.line-list li.current .line-row { border-color: var(--honey-deep); }
+.line-list form { flex: 1; }
+.line-row {
+  flex: 1; min-width: 0; display: flex; gap: 10px; align-items: baseline; text-align: left; padding: 8px 10px;
+  border-radius: 10px; border: 1px solid var(--line); background: var(--bg); font-size: 15px; min-height: 0;
+}
+.line-row .line-num { min-width: 1.6em; text-align: right; }
+.line-row-text { flex: 1; min-width: 0; }
+.tag { margin-left: 6px; font-size: 12px; padding: 1px 6px; border-radius: 999px; background: var(--var-bg); color: var(--muted); white-space: nowrap; }
+.trunk { color: var(--muted); font-size: 15px; margin: 0 0 10px; padding: 6px 8px; border-radius: 8px; background: var(--var-bg); }
+.trunk .mv { color: var(--text); font-weight: 600; }
+.trunk-label { font-size: 13px; }
+.trunk-fold { display: block; margin: 0 0 8px; }
+.link-btn.small { font-size: 13px; }
+.branch-links { font-size: 14px; display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; margin: -4px 0 10px !important; }
+.branch-link {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 2px 10px; min-height: 0;
+  font-size: 14px; color: var(--var); font-weight: 600;
+}

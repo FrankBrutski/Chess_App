@@ -4,6 +4,7 @@ import { db, chaptersOf, deleteCourse, newId } from '../lib/db';
 import { navigate } from '../router';
 import { getLichessEnabled } from '../lib/prefs';
 import { countMoves } from '../lib/tree';
+import { splitLines } from '../lib/lines';
 import { TIER_CHOICES, groupHives, moveInList, tierName } from '../lib/hives';
 import { moveComb } from '../lib/importer';
 import type { Chapter, Course, Section } from '../lib/model';
@@ -116,7 +117,7 @@ export function CoursePage({ courseId }: { courseId: string }) {
                   <button type="button" className="card" onClick={() => navigate(`/read/${c.id}`)}>
                     <span className="card-title">{c.title}</span>
                     <span className="card-sub">
-                      {chapterMoves(c)} moves
+                      {splitLines(c.root, c.orientation).length} lines · {chapterMoves(c)} moves
                       {c.issues?.length ? ` · ${c.issues.length} issue${c.issues.length === 1 ? '' : 's'}` : ''}
                     </span>
                   </button>
