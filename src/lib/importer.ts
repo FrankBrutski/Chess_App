@@ -1,8 +1,9 @@
-import { db, newId, chaptersOf } from './db';
-import type { Chapter, Course } from './model';
+import { db, newId, chaptersOfSection } from './db';
+import type { Chapter, Course, Section } from './model';
 import { toChapter, type ParsedChapter } from './pgn';
 import { checkChapter } from './checker';
 import { getAutoLink } from './prefs';
+import { LICHESS_STUDY_URL } from './hives';
 
 export interface SyncPlan {
   added: ParsedChapter[];
@@ -17,13 +18,10 @@ export interface SyncResult extends SyncPlan {
   open: number;
 }
 
-const build = (p: ParsedChapter, courseId: string, order: number, id: string) =>
-  toChapter(p, courseId, order, id, checkChapter(p, { auto: getAutoLink() }));
-
 const norm = (s: string) => s.trim().toLowerCase();
 
-/** Work out which chapters of an existing course each imported chapter replaces. */
-export function planSync(existing: Chapter[], incoming: ParsedChapter[]): SyncPlan {
+/** Work out which combs of a section each imported chapter replaces. */
+export function planSync(existing: Chapter[], incoming: ParsedChapter[], removeMissing = true): SyncPlan {
   const used = new Set<string>();
   const updated: SyncPlan['updated'] = [];
   const added: ParsedChapter[] = [];
@@ -36,42 +34,106 @@ export function planSync(existing: Chapter[], incoming: ParsedChapter[]): SyncPl
       updated.push({ parsed: p, existing: match });
     } else added.push(p);
   }
-  return { added, updated, removed: existing.filter((e) => !used.has(e.id)) };
+  return { added, updated, removed: removeMissing ? existing.filter((e) => !used.has(e.id)) : [] };
 }
 
-export async function createCourse(name: string, chapters: ParsedChapter[], sourceUrl?: string): Promise<string> {
+export interface NewHive {
+  name: string;
+  color: 'white' | 'black';
+  tier: number;
+}
+
+export async function createHive(h: NewHive): Promise<Course> {
   const now = Date.now();
-  const course: Course = {
+  const sameGroup = await db.courses.filter((c) => c.color === h.color && c.tier === h.tier).count();
+  const hive: Course = {
     id: newId(),
-    name,
-    sourceUrl,
-    lichessStudyId: chapters.find((c) => c.lichessStudyId)?.lichessStudyId,
+    name: h.name.trim() || 'New hive',
+    color: h.color,
+    tier: h.tier,
+    order: sameGroup,
+    sections: [],
     createdAt: now,
     updatedAt: now,
   };
-  await db.transaction('rw', db.courses, db.chapters, async () => {
-    await db.courses.add(course);
-    await db.chapters.bulkAdd(chapters.map((p, i) => build(p, course.id, i, newId())));
-  });
-  return course.id;
+  await db.courses.add(hive);
+  return hive;
+}
+
+export interface ImportTarget {
+  hiveId: string;
+  /** An existing section, or a new one with this name. */
+  sectionId?: string;
+  newSectionName?: string;
+  /** Lichess study link, stored on the section so it can be synced later. */
+  sourceUrl?: string;
+  lichessStudyId?: string;
+  /**
+   * true = this is a sync/re-upload of the section: combs missing from the
+   * import are removed. false = add to the section, never removing anything.
+   */
+  replace: boolean;
 }
 
 /**
- * Replace a course's chapters with a new import. Matched chapters keep their id,
- * so anything tied to them (training progress, from phase 2) survives.
+ * Import chapters into a hive section. Matched combs keep their id (so training
+ * progress tied to them survives) and every comb plays from the hive's colour.
  */
-export async function applySync(courseId: string, incoming: ParsedChapter[], sourceUrl?: string): Promise<SyncResult> {
-  const existing = await chaptersOf(courseId);
-  const plan = planSync(existing, incoming);
+export async function importInto(target: ImportTarget, incoming: ParsedChapter[]): Promise<SyncResult & { sectionId: string }> {
+  const hive = await db.courses.get(target.hiveId);
+  if (!hive) throw new Error('That hive no longer exists.');
+  let section = hive.sections.find((s) => s.id === target.sectionId);
+  const sections = [...hive.sections];
+  if (!section) {
+    section = { id: newId(), name: target.newSectionName?.trim() || 'New section' };
+    sections.push(section);
+  }
+  if (target.sourceUrl && LICHESS_STUDY_URL.test(target.sourceUrl)) {
+    section = { ...section, sourceUrl: target.sourceUrl, lichessStudyId: target.lichessStudyId };
+  }
+  const finalSection: Section = section;
+  const nextSections = sections.map((s) => (s.id === finalSection.id ? finalSection : s));
+
+  const existing = await chaptersOfSection(finalSection.id);
+  const plan = planSync(existing, incoming, target.replace);
   const idFor = new Map(plan.updated.map((u) => [u.parsed, u.existing.id]));
-  const built = incoming.map((p, i) => build(p, courseId, i, idFor.get(p) ?? newId()));
+  const orderFor = new Map(plan.updated.map((u) => [u.parsed, u.existing.order]));
+  const auto = getAutoLink();
+  let next = existing.reduce((m, c) => Math.max(m, c.order + 1), 0);
+  const built = incoming.map((p, i) =>
+    toChapter(
+      p,
+      hive.id,
+      finalSection.id,
+      target.replace ? i : orderFor.get(p) ?? next++,
+      idFor.get(p) ?? newId(),
+      checkChapter(p, { auto }),
+      hive.color,
+    ),
+  );
   const before = new Set(plan.updated.flatMap((u) => (u.existing.issues ?? []).map((x) => `${u.existing.id}|${x.key}`)));
   const after = new Set(built.flatMap((c) => (c.issues ?? []).map((x) => `${c.id}|${x.key}`)));
   const fixed = [...before].filter((k) => !after.has(k)).length;
   await db.transaction('rw', db.courses, db.chapters, async () => {
     await db.chapters.bulkDelete(plan.removed.map((r) => r.id));
     await db.chapters.bulkPut(built);
-    await db.courses.update(courseId, { updatedAt: Date.now(), ...(sourceUrl ? { sourceUrl } : {}) });
+    await db.courses.update(hive.id, { sections: nextSections, updatedAt: Date.now() });
   });
-  return { ...plan, fixed, open: after.size };
+  return { ...plan, fixed, open: after.size, sectionId: finalSection.id };
+}
+
+/** Move a comb to another section or hive. Its id is kept, so its progress comes with it. */
+export async function moveComb(chapterId: string, hiveId: string, sectionId: string) {
+  const hive = await db.courses.get(hiveId);
+  if (!hive || !hive.sections.some((s) => s.id === sectionId)) throw new Error('That section no longer exists.');
+  const order = (await chaptersOfSection(sectionId)).reduce((m, c) => Math.max(m, c.order + 1), 0);
+  await db.chapters
+    .where('id')
+    .equals(chapterId)
+    .modify((c) => {
+      c.courseId = hiveId;
+      c.sectionId = sectionId;
+      c.order = order;
+      c.orientation = hive.color;
+    });
 }

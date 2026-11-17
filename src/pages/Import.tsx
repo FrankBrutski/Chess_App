@@ -1,21 +1,39 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, chaptersOf } from '../lib/db';
+import { db, chaptersOfSection } from '../lib/db';
 import { parseChapters, type ParsedChapter } from '../lib/pgn';
 import { fetchStudyPgn, parseStudyUrl, studyUrl } from '../lib/lichess';
 import { annotateChapter, countInlineLines } from '../lib/annotations';
 import { checkChapter, hasBlockingError } from '../lib/checker';
 import { IssueList } from '../components/IssueList';
-import { applySync, createCourse, planSync } from '../lib/importer';
+import { createHive, importInto, planSync } from '../lib/importer';
+import { TIER_CHOICES, groupHives, tierName } from '../lib/hives';
 import { countMoves } from '../lib/tree';
 import { navigate } from '../router';
 import { getAutoLink, getLichessEnabled, getToken } from '../lib/prefs';
 
 type Source = 'link' | 'file' | 'paste';
 
-export function ImportPage({ courseId }: { courseId?: string }) {
-  const course = useLiveQuery(async () => (courseId ? (await db.courses.get(courseId)) ?? null : null), [courseId]);
-  const existing = useLiveQuery(async () => (courseId ? chaptersOf(courseId) : []), [courseId]);
+const NEW = '__new__';
+
+/**
+ * #/import                     new import: pick a hive and section after reading the PGN
+ * #/import/:hiveId             same, with that hive preselected
+ * #/import/:hiveId/:sectionId  update (sync / re-upload) that section
+ */
+export function ImportPage({ courseId, sectionId }: { courseId?: string; sectionId?: string }) {
+  const updating = !!(courseId && sectionId);
+  const hives = useLiveQuery(() => db.courses.toArray(), []);
+  const course = hives?.find((h) => h.id === courseId);
+  const section = course?.sections.find((x) => x.id === sectionId);
+  const existing = useLiveQuery(async () => (updating ? chaptersOfSection(sectionId!) : []), [sectionId, updating]);
+
+  // Where the import goes (new imports only).
+  const [hiveChoice, setHiveChoice] = useState<string>(courseId ?? NEW);
+  const [hiveColor, setHiveColor] = useState<'white' | 'black'>('white');
+  const [hiveTier, setHiveTier] = useState(1);
+  const [sectionChoice, setSectionChoice] = useState<string>(NEW);
+  const [sectionName, setSectionName] = useState('');
 
   const lichessOn = getLichessEnabled();
   const [source, setSource] = useState<Source>(lichessOn ? 'link' : 'file');
@@ -29,9 +47,10 @@ export function ImportPage({ courseId }: { courseId?: string }) {
   const [linkedUrl, setLinkedUrl] = useState<string>();
 
   useEffect(() => {
-    if (course?.sourceUrl) setLink(course.sourceUrl);
-    if ((course && !course.sourceUrl) || !lichessOn) setSource('file');
-  }, [course]);
+    if (!updating) return;
+    if (section?.sourceUrl) setLink(section.sourceUrl);
+    if ((section && !section.sourceUrl) || !lichessOn) setSource('file');
+  }, [section, updating, lichessOn]);
 
   const load = (text: string, url?: string) => {
     try {
@@ -41,7 +60,10 @@ export function ImportPage({ courseId }: { courseId?: string }) {
       // Chapters whose main line is broken start unticked; you can still tick them.
       const auto = getAutoLink();
       setPicked(new Set(chapters.map((c, i) => (hasBlockingError(checkChapter(c, { auto })) ? -1 : i)).filter((i) => i >= 0)));
-      setName(course?.name ?? chapters[0].studyName ?? 'New hive');
+      const studyName = chapters[0].studyName ?? 'New study';
+      setName(studyName);
+      setSectionName(studyName);
+      setHiveColor(chapters[0].orientation);
       setLinkedUrl(url ?? (chapters[0].lichessStudyId ? studyUrl({ studyId: chapters[0].lichessStudyId }) : undefined));
       setError(undefined);
     } catch (e) {
@@ -84,20 +106,38 @@ export function ImportPage({ courseId }: { courseId?: string }) {
     return { errors: all.filter((i) => i.severity === 'error').length, warnings: all.filter((i) => i.severity === 'warning').length };
   }, [stats]);
   const [result, setResult] = useState<{ fixed: number; open: number }>();
-  const plan = useMemo(() => (courseId && existing ? planSync(existing, selected) : undefined), [courseId, existing, selected]);
+  const targetHive = hives?.find((h) => h.id === hiveChoice);
+  const plan = useMemo(() => {
+    if (updating && existing) return planSync(existing, selected, true);
+    return undefined;
+  }, [updating, existing, selected]);
 
   const save = async () => {
     if (!selected.length) return;
     setBusy(true);
     try {
-      if (courseId) {
-        const r = await applySync(courseId, selected, source === 'link' ? linkedUrl : undefined);
-        if (name.trim() && name !== course?.name) await db.courses.update(courseId, { name: name.trim() });
+      const studyId = linkedUrl ? parseStudyUrl(linkedUrl)?.studyId : undefined;
+      if (updating) {
+        const r = await importInto(
+          { hiveId: courseId!, sectionId, sourceUrl: source === 'link' ? linkedUrl : undefined, lichessStudyId: studyId, replace: true },
+          selected,
+        );
         if (r.fixed || r.open) { setResult(r); setBusy(false); return; }
         navigate(`/course/${courseId}`);
       } else {
-        const id = await createCourse(name.trim() || 'New hive', selected, linkedUrl);
-        navigate(`/course/${id}`);
+        const hiveId = hiveChoice === NEW ? (await createHive({ name, color: hiveColor, tier: hiveTier })).id : hiveChoice;
+        await importInto(
+          {
+            hiveId,
+            sectionId: sectionChoice === NEW ? undefined : sectionChoice,
+            newSectionName: sectionName,
+            sourceUrl: linkedUrl,
+            lichessStudyId: studyId,
+            replace: false,
+          },
+          selected,
+        );
+        navigate(`/course/${hiveId}`);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -109,7 +149,7 @@ export function ImportPage({ courseId }: { courseId?: string }) {
     <div className="page">
       <header className="page-header">
         <button type="button" className="icon-btn" onClick={() => navigate(courseId ? `/course/${courseId}` : '/')} aria-label="Back">‹</button>
-        <h1>{courseId ? 'Update hive' : 'New hive'}</h1>
+        <h1>{updating ? 'Update section' : 'Import a study'}</h1>
         <span />
       </header>
 
@@ -163,7 +203,7 @@ export function ImportPage({ courseId }: { courseId?: string }) {
 
       {error && <p className="error">{error}</p>}
 
-      {result && courseId && (
+      {result && updating && (
         <div className="stack">
           <p className="checker-summary">
             Updated. {result.fixed ? `${result.fixed} issue${result.fixed === 1 ? '' : 's'} from last time ${result.fixed === 1 ? 'is' : 'are'} fixed. ` : ''}
@@ -182,10 +222,67 @@ export function ImportPage({ courseId }: { courseId?: string }) {
               ? 'no problems found.'
               : `${totals.errors ? `${totals.errors} main-line problem${totals.errors === 1 ? '' : 's'}, ` : ''}${totals.warnings} warning${totals.warnings === 1 ? '' : 's'}. Warnings never stop the import; you can review them later from the course.`}
           </div>
-          <label className="field">
-            <span>Hive name</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} />
-          </label>
+          {updating ? (
+            <p className="muted small">
+              Updating <strong>{section?.name}</strong> in the hive <strong>{course?.name}</strong>. Combs you've already
+              trained keep their progress.
+            </p>
+          ) : (
+            <fieldset className="target">
+              <legend>Where should it go?</legend>
+              <label className="field">
+                <span>Hive (repertoire)</span>
+                <select value={hiveChoice} onChange={(e) => { setHiveChoice(e.target.value); setSectionChoice(NEW); }}>
+                  <option value={NEW}>+ New hive</option>
+                  {groupHives(hives ?? []).flatMap((g) =>
+                    g.tiers.flatMap((t) =>
+                      t.hives.map((h) => (
+                        <option key={h.id} value={h.id}>
+                          {h.name} ({g.color === 'white' ? 'White' : 'Black'}, {tierName(t.tier)})
+                        </option>
+                      )),
+                    ),
+                  )}
+                </select>
+              </label>
+              {hiveChoice === NEW && (
+                <>
+                  <label className="field">
+                    <span>Hive name</span>
+                    <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. King's Gambit" />
+                  </label>
+                  <div className="row">
+                    <label className="field">
+                      <span>I play</span>
+                      <select value={hiveColor} onChange={(e) => setHiveColor(e.target.value as 'white' | 'black')}>
+                        <option value="white">White</option>
+                        <option value="black">Black</option>
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span>Priority</span>
+                      <select value={hiveTier} onChange={(e) => setHiveTier(+e.target.value)}>
+                        {TIER_CHOICES.map((t) => <option key={t} value={t}>{tierName(t)}</option>)}
+                      </select>
+                    </label>
+                  </div>
+                </>
+              )}
+              <label className="field">
+                <span>Section</span>
+                <select value={sectionChoice} onChange={(e) => setSectionChoice(e.target.value)}>
+                  <option value={NEW}>+ New section</option>
+                  {targetHive?.sections.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                </select>
+              </label>
+              {sectionChoice === NEW && (
+                <label className="field">
+                  <span>Section name</span>
+                  <input value={sectionName} onChange={(e) => setSectionName(e.target.value)} placeholder="e.g. Classical lines" />
+                </label>
+              )}
+            </fieldset>
+          )}
           <ul className="pick-list">
             {parsed.map((c, i) => (
               <li key={i}>
@@ -221,7 +318,7 @@ export function ImportPage({ courseId }: { courseId?: string }) {
             </p>
           )}
           <button type="button" className="primary wide" disabled={busy || !selected.length} onClick={save}>
-            {courseId ? `Update ${selected.length} combs` : `Import ${selected.length} combs`}
+            {updating ? `Update ${selected.length} combs` : `Import ${selected.length} combs`}
           </button>
           <button type="button" className="wide" onClick={() => setParsed(undefined)}>Start over</button>
         </div>

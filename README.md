@@ -4,8 +4,10 @@ A personal opening repertoire reader and trainer, built as an installable web ap
 
 | In the app | Means |
 | --- | --- |
-| Hive | A course (one Lichess study) |
-| Comb | A chapter |
+| Apiary | All your repertoires |
+| Hive | One repertoire, with a colour (White/Black) and a priority (Main, Secondary, Tertiary, …) |
+| Section | A group of combs inside a hive, usually one Lichess study or one theme |
+| Comb | A chapter (its lines live inside it) |
 | Cell | A position you train (phase 2) |
 | Forage | Play along to learn new lines |
 | Swarm | A review session (phase 2) |

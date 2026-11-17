@@ -19,7 +19,7 @@ export function App() {
     case 'read':
       return <Reader chapterId={id} startNodeId={sub} />;
     case 'import':
-      return <ImportPage courseId={id} />;
+      return <ImportPage courseId={id} sectionId={sub} />;
     case 'issues':
       return <IssuesPage courseId={id} />;
     case 'settings':
