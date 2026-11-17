@@ -9,7 +9,7 @@ import { IssueList } from '../components/IssueList';
 import { applySync, createCourse, planSync } from '../lib/importer';
 import { countMoves } from '../lib/tree';
 import { navigate } from '../router';
-import { getAutoLink, getToken } from '../lib/prefs';
+import { getAutoLink, getLichessEnabled, getToken } from '../lib/prefs';
 
 type Source = 'link' | 'file' | 'paste';
 
@@ -17,7 +17,8 @@ export function ImportPage({ courseId }: { courseId?: string }) {
   const course = useLiveQuery(async () => (courseId ? (await db.courses.get(courseId)) ?? null : null), [courseId]);
   const existing = useLiveQuery(async () => (courseId ? chaptersOf(courseId) : []), [courseId]);
 
-  const [source, setSource] = useState<Source>('link');
+  const lichessOn = getLichessEnabled();
+  const [source, setSource] = useState<Source>(lichessOn ? 'link' : 'file');
   const [link, setLink] = useState('');
   const [paste, setPaste] = useState('');
   const [busy, setBusy] = useState(false);
@@ -29,7 +30,7 @@ export function ImportPage({ courseId }: { courseId?: string }) {
 
   useEffect(() => {
     if (course?.sourceUrl) setLink(course.sourceUrl);
-    if (course && !course.sourceUrl) setSource('file');
+    if ((course && !course.sourceUrl) || !lichessOn) setSource('file');
   }, [course]);
 
   const load = (text: string, url?: string) => {
@@ -115,7 +116,7 @@ export function ImportPage({ courseId }: { courseId?: string }) {
       {!parsed && (
         <>
           <div className="segmented" role="tablist">
-            {(['link', 'file', 'paste'] as Source[]).map((s) => (
+            {((lichessOn ? ['link', 'file', 'paste'] : ['file', 'paste']) as Source[]).map((s) => (
               <button key={s} type="button" role="tab" aria-selected={source === s} className={source === s ? 'on' : ''} onClick={() => setSource(s)}>
                 {s === 'link' ? 'Lichess link' : s === 'file' ? 'PGN file' : 'Paste PGN'}
               </button>

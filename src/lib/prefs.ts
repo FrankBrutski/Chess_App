@@ -15,3 +15,7 @@ export const setAutoLink = (on: boolean) => write('autoLinkMoves', on ? '1' : nu
 /** Show moves and squares written in plain comment text in bold (not clickable). On by default. */
 export const getBoldNotation = () => read('boldNotation') !== '0';
 export const setBoldNotation = (on: boolean) => write('boldNotation', on ? null : '0');
+
+/** Allow the app to download studies from lichess.org. When off, the app makes no network requests at all. */
+export const getLichessEnabled = () => read('lichessEnabled') !== '0';
+export const setLichessEnabled = (on: boolean) => write('lichessEnabled', on ? null : '0');

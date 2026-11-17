@@ -1,13 +1,37 @@
 /// <reference types="vitest/config" />
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+
+// Content Security Policy for the built app: it may only load its own files and
+// talk to lichess.org (study downloads). Anything else is blocked by the browser.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'", // the board positions pieces with inline styles
+  "img-src 'self' data: blob:", // piece images are data: URIs
+  "connect-src 'self' https://lichess.org",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "frame-src 'none'",
+  "base-uri 'self'",
+  "form-action 'none'",
+].join('; ');
+
+const cspPlugin = (): Plugin => ({
+  name: 'csp-meta',
+  apply: 'build', // the dev server needs inline scripts for hot reload
+  transformIndexHtml: (html) =>
+    html.replace('<meta charset="UTF-8" />', `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${CSP}" />`),
+});
 
 // Relative base so the same build works at https://<user>.github.io/<repo>/ or any other host.
 export default defineConfig({
   base: './',
   plugins: [
     react(),
+    cspPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['apple-touch-icon.png', 'favicon.svg'],

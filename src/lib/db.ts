@@ -65,6 +65,14 @@ export async function importBackup(data: unknown): Promise<number> {
   if (!b || b.app !== 'chess-app' || !Array.isArray(b.courses) || !Array.isArray(b.chapters)) {
     throw new Error('This file is not a Chess App backup.');
   }
+  for (const c of b.courses) {
+    if (typeof c.id !== 'string' || typeof c.name !== 'string') throw new Error('This backup file is damaged.');
+    // Only keep a study link that really points at lichess.org.
+    if (c.sourceUrl !== undefined && !/^https:\/\/lichess\.org\/study\/[A-Za-z0-9]{8}$/.test(c.sourceUrl)) delete c.sourceUrl;
+  }
+  for (const ch of b.chapters) {
+    if (typeof ch.id !== 'string' || typeof ch.courseId !== 'string' || !ch.root) throw new Error('This backup file is damaged.');
+  }
   await db.transaction('rw', db.courses, db.chapters, async () => {
     for (const c of b.courses) await db.chapters.where('courseId').equals(c.id).delete();
     await db.courses.bulkPut(b.courses);

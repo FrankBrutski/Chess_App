@@ -2,8 +2,12 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, chaptersOf, deleteCourse } from '../lib/db';
 import { navigate } from '../router';
+import { getLichessEnabled } from '../lib/prefs';
 import { countMoves } from '../lib/tree';
 import type { Chapter } from '../lib/model';
+
+/** Only ever link out to lichess.org (a restored backup file could contain anything). */
+const isLichessUrl = (u: string) => /^https:\/\/lichess\.org\//.test(u);
 
 const chapterMoves = (c: Chapter) => c.root.children.reduce((n, m) => n + countMoves(m), 0);
 
@@ -43,17 +47,17 @@ export function CoursePage({ courseId }: { courseId: string }) {
             Import issues ({issueCount})
           </button>
         )}
-        {course.sourceUrl && (
+        {course.sourceUrl && getLichessEnabled() && (
           <button type="button" className="primary wide" onClick={() => navigate(`/import/${course.id}`)}>
             Sync from Lichess or upload a new version
           </button>
         )}
-        {!course.sourceUrl && (
+        {!(course.sourceUrl && getLichessEnabled()) && (
           <button type="button" className="wide" onClick={() => navigate(`/import/${course.id}`)}>
             Upload a new version
           </button>
         )}
-        {course.sourceUrl && (
+        {course.sourceUrl && isLichessUrl(course.sourceUrl) && (
           <a className="muted small" href={course.sourceUrl} target="_blank" rel="noreferrer">
             Open the study on Lichess
           </a>

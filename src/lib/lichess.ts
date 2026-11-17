@@ -1,3 +1,5 @@
+import { getLichessEnabled } from './prefs';
+
 const STUDY = /lichess\.org\/study\/([A-Za-z0-9]{8})(?:\/([A-Za-z0-9]{8}))?/;
 
 export interface StudyRef {
@@ -21,11 +23,20 @@ export const studyUrl = (ref: StudyRef) =>
  * Public and unlisted studies need no token; private ones need a token with study:read.
  */
 export async function fetchStudyPgn(ref: StudyRef, token?: string): Promise<string> {
+  if (!getLichessEnabled()) throw new Error('Lichess downloads are switched off in Settings.');
+  // Ids are checked to be 8 letters/digits, so the request can only ever go to lichess.org.
+  if (!/^[A-Za-z0-9]{8}$/.test(ref.studyId) || (ref.chapterId && !/^[A-Za-z0-9]{8}$/.test(ref.chapterId))) {
+    throw new Error('That does not look like a Lichess study link.');
+  }
   const path = ref.chapterId ? `${ref.studyId}/${ref.chapterId}` : ref.studyId;
   const url = `https://lichess.org/api/study/${path}.pgn?comments=true&variations=true&clocks=false&orientation=true`;
   let res: Response;
   try {
-    res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+    res = await fetch(url, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      credentials: 'omit', // never send cookies
+      referrerPolicy: 'no-referrer',
+    });
   } catch {
     throw new Error('Could not reach Lichess. Check your connection, or download the PGN and upload the file instead.');
   }
