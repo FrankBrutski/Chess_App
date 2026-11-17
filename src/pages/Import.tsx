@@ -41,7 +41,7 @@ export function ImportPage({ courseId }: { courseId?: string }) {
       // Chapters whose main line is broken start unticked; you can still tick them.
       const auto = getAutoLink();
       setPicked(new Set(chapters.map((c, i) => (hasBlockingError(checkChapter(c, { auto })) ? -1 : i)).filter((i) => i >= 0)));
-      setName(course?.name ?? chapters[0].studyName ?? 'New course');
+      setName(course?.name ?? chapters[0].studyName ?? 'New hive');
       setLinkedUrl(url ?? (chapters[0].lichessStudyId ? studyUrl({ studyId: chapters[0].lichessStudyId }) : undefined));
       setError(undefined);
     } catch (e) {
@@ -96,7 +96,7 @@ export function ImportPage({ courseId }: { courseId?: string }) {
         if (r.fixed || r.open) { setResult(r); setBusy(false); return; }
         navigate(`/course/${courseId}`);
       } else {
-        const id = await createCourse(name.trim() || 'New course', selected, linkedUrl);
+        const id = await createCourse(name.trim() || 'New hive', selected, linkedUrl);
         navigate(`/course/${id}`);
       }
     } catch (e) {
@@ -109,7 +109,7 @@ export function ImportPage({ courseId }: { courseId?: string }) {
     <div className="page">
       <header className="page-header">
         <button type="button" className="icon-btn" onClick={() => navigate(courseId ? `/course/${courseId}` : '/')} aria-label="Back">‹</button>
-        <h1>{courseId ? 'Update course' : 'Import a study'}</h1>
+        <h1>{courseId ? 'Update hive' : 'New hive'}</h1>
         <span />
       </header>
 
@@ -135,7 +135,7 @@ export function ImportPage({ courseId }: { courseId?: string }) {
                   onChange={(e) => setLink(e.target.value)}
                 />
               </label>
-              <p className="muted small">Public and unlisted studies work with just the link. Use a whole study or one chapter's link.</p>
+              <p className="muted small">Public and unlisted studies work with just the link. Use a whole study (a hive) or one chapter's link (a comb).</p>
               <button type="button" className="primary wide" disabled={busy || !link.trim()} onClick={fromLink}>
                 {busy ? 'Downloading…' : 'Get study'}
               </button>
@@ -183,7 +183,7 @@ export function ImportPage({ courseId }: { courseId?: string }) {
               : `${totals.errors ? `${totals.errors} main-line problem${totals.errors === 1 ? '' : 's'}, ` : ''}${totals.warnings} warning${totals.warnings === 1 ? '' : 's'}. Warnings never stop the import; you can review them later from the course.`}
           </div>
           <label className="field">
-            <span>Course name</span>
+            <span>Hive name</span>
             <input value={name} onChange={(e) => setName(e.target.value)} />
           </label>
           <ul className="pick-list">
@@ -216,12 +216,12 @@ export function ImportPage({ courseId }: { courseId?: string }) {
           </ul>
           {plan && (
             <p className="muted small">
-              {plan.updated.length} chapters updated, {plan.added.length} added
+              {plan.updated.length} combs updated, {plan.added.length} added
               {plan.removed.length ? `, ${plan.removed.length} removed (${plan.removed.map((r) => r.title).join(', ')})` : ''}.
             </p>
           )}
           <button type="button" className="primary wide" disabled={busy || !selected.length} onClick={save}>
-            {courseId ? `Update ${selected.length} chapters` : `Import ${selected.length} chapters`}
+            {courseId ? `Update ${selected.length} combs` : `Import ${selected.length} combs`}
           </button>
           <button type="button" className="wide" onClick={() => setParsed(undefined)}>Start over</button>
         </div>
