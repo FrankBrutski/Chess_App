@@ -7,6 +7,7 @@ import { ShotImage } from '../components/ShotImage';
 import { addScreenshots, deleteSting, STATUS_LABEL } from '../lib/stings';
 import type { StingStatus } from '../lib/model';
 import { getStingsNewestFirst, setStingsNewestFirst } from '../lib/prefs';
+import { useDrillCount } from './StingDrill';
 
 const TABS: StingStatus[] = ['inbox', 'progress', 'ready'];
 
@@ -19,6 +20,7 @@ export function StingsPage({ tab: tabParam }: { tab?: string }) {
   const [busy, setBusy] = useState<{ done: number; total: number }>();
   const [note, setNote] = useState<string>();
   const fileRef = useRef<HTMLInputElement>(null);
+  const drill = useDrillCount();
 
   const counts = useLiveQuery(async () => {
     const all = await db.stings.orderBy('status').keys();
@@ -54,7 +56,12 @@ export function StingsPage({ tab: tabParam }: { tab?: string }) {
         <button type="button" className="icon-btn" onClick={() => navigate('/settings')} aria-label="Settings">⚙</button>
       </header>
 
-      <label className={`primary-file${busy ? ' busy' : ''}`}>
+      {(counts?.ready ?? 0) > 0 && (
+        <button type="button" className="primary wide drill-cta" onClick={() => navigate('/stings/drill')}>
+          {drill ? `Drill · ${drill} card${drill === 1 ? '' : 's'}` : 'Drill · nothing due'}
+        </button>
+      )}
+      <label className={`primary-file${busy ? ' busy' : ''}${(counts?.ready ?? 0) > 0 ? ' secondary' : ''}`}>
         <input ref={fileRef} type="file" accept="image/*" multiple disabled={!!busy} onChange={(e) => void onFiles(e.target.files)} />
         {busy ? `Adding ${busy.done} of ${busy.total}…` : 'Add screenshots'}
       </label>

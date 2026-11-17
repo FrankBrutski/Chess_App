@@ -5,6 +5,8 @@ import { HexMark, StingMark } from '../components/HexMark';
 import { loadTrainData } from '../lib/training';
 import { userKeys } from '../lib/srs';
 import { stingCounts } from '../lib/stings';
+import { planDrill } from '../lib/stingDrill';
+import { getStingNew } from '../lib/prefs';
 
 /** The front door: openings and tactics are two separate parts of the app. */
 export function Home() {
@@ -15,6 +17,10 @@ export function Home() {
     return new Set(d.lines.flatMap(userKeys).filter((k) => (d.cells.get(k)?.due ?? Infinity) <= now)).size;
   }, []);
   const stings = useLiveQuery(stingCounts, []);
+  const drill = useLiveQuery(async () => {
+    const [cards, cellList] = await Promise.all([db.stings.where('status').equals('ready').toArray(), db.cells.where('key').startsWith('sting:').toArray()]);
+    return planDrill(cards, new Map(cellList.map((c) => [c.key, c])), Date.now(), getStingNew()).length;
+  }, []);
 
   return (
     <div className="page home">
@@ -39,7 +45,7 @@ export function Home() {
             {stings
               ? stings.inbox + stings.progress + stings.ready === 0
                 ? 'Add screenshots to start'
-                : [stings.inbox && `${stings.inbox} in Inbox`, stings.progress && `${stings.progress} in progress`, stings.ready && `${stings.ready} ready`].filter(Boolean).join(' · ')
+                : [drill && `${drill} to drill`, stings.inbox && `${stings.inbox} in Inbox`, stings.progress && `${stings.progress} in progress`, !drill && stings.ready && `${stings.ready} ready`].filter(Boolean).join(' · ')
               : ''}
           </span>
         </button>

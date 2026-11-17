@@ -147,3 +147,10 @@ export function setTheme(t: Theme) {
 /** Card lists and Next/Previous go newest first unless you flip it. */
 export const getStingsNewestFirst = () => read('stingsOldestFirst') !== '1';
 export const setStingsNewestFirst = (on: boolean) => write('stingsOldestFirst', on ? null : '1');
+export const getStingHoney = () => Math.max(0, Number(read('stingHoney') ?? 3));
+export const setStingHoney = (n: number) => write('stingHoney', String(n));
+export const getStingNew = () => Math.max(1, Number(read('stingNew') ?? 10));
+export const setStingNew = (n: number) => write('stingNew', String(n));
+/** Ask Stockfish about winning moves you didn't write down. On by default. */
+export const getStingEngineCheck = () => read('stingEngineCheck') !== '0';
+export const setStingEngineCheck = (on: boolean) => write('stingEngineCheck', on ? null : '0');
