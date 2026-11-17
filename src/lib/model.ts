@@ -58,6 +58,10 @@ export interface Chapter {
   issues?: Issue[];
   /** Your own names for lines, by line id (see lib/lines.ts). Kept across re-syncs. */
   lineNames?: Record<string, string>;
+  /** Line ids you chose not to drill. Kept across re-syncs. */
+  skipLines?: string[];
+  /** true = don't drill any line of this comb. */
+  skip?: boolean;
   importedAt: number;
 }
 
@@ -68,6 +72,8 @@ export interface Section {
   /** Lichess study this section syncs from, if any. */
   sourceUrl?: string;
   lichessStudyId?: string;
+  /** true = don't drill this section. */
+  skip?: boolean;
 }
 
 /** A hive = one repertoire, e.g. "King's Gambit" as White, main. */
@@ -81,6 +87,8 @@ export interface Course {
   /** Position among hives of the same colour and tier. */
   order: number;
   sections: Section[];
+  /** true = don't drill this hive (it stays readable). */
+  skip?: boolean;
   /** @deprecated moved to Section; kept so old data can be migrated. */
   sourceUrl?: string;
   /** @deprecated moved to Section. */

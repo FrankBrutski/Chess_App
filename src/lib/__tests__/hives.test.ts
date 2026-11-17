@@ -111,7 +111,45 @@ describe('importing into hives and sections', () => {
     expect(hive.sections[0].sourceUrl).toBe('https://lichess.org/study/AbCdEfGh');
     expect((await chaptersOf('c1')).every((c) => c.sectionId === hive.sections[0].id)).toBe(true);
     const round = await exportBackup();
-    expect(round.version).toBe(2);
+    expect(round.version).toBe(3);
     expect(newId()).toMatch(/\w/);
+  });
+});
+
+describe('training progress in backups', () => {
+  it('saves and restores cells and honey', async () => {
+    const { db, exportBackup, importBackup, addHoney } = await import('../db');
+    await db.cells.put({ key: 'k1', level: 3, due: 123, learnedAt: 1, lapses: 0 });
+    await addHoney(5);
+    await addHoney(2);
+    const b = await exportBackup();
+    expect(b.cells?.find((c) => c.key === 'k1')?.level).toBe(3);
+    expect(b.honey?.reduce((n, h) => n + h.amount, 0)).toBeGreaterThanOrEqual(7);
+    await db.cells.clear();
+    await db.honey.clear();
+    await importBackup({ ...b, cells: [...(b.cells ?? []), { key: 5 }] });
+    expect((await db.cells.get('k1'))?.level).toBe(3);
+    expect(await db.cells.count()).toBe(1);
+  });
+});
+
+describe('line settings across a re-sync', () => {
+  it('keeps line names, skipped lines and comb skip after syncing a changed study', async () => {
+    const hive = await createHive({ name: 'Keep', color: 'white', tier: 1 });
+    const a = await importInto({ hiveId: hive.id, newSectionName: 'A', replace: false }, parseChapters(STUDY_PGN).slice(0, 1));
+    const [ch] = await chaptersOf(hive.id);
+    const { splitLines } = await import('../lines');
+    const before = splitLines(ch.root, 'white', { order: 'mainFirst' });
+    const { db } = await import('../db');
+    await db.chapters.where('id').equals(ch.id).modify((c) => { c.lineNames = { [before[3].id]: 'Philidor' }; c.skipLines = [before[1].id]; c.skip = true; });
+    // The study gains a new line and an extended one.
+    const changed = STUDY_PGN.replace('(4. d3 { Quieter. })', '(4. d3 { Quieter. } 4... d6)').replace('(2... d6', '(2... f5 3. exf5) (2... d6');
+    await importInto({ hiveId: hive.id, sectionId: a.sectionId, replace: true }, parseChapters(changed).slice(0, 1));
+    const [after] = await chaptersOf(hive.id);
+    expect(after.id).toBe(ch.id);
+    const lines = splitLines(after.root, 'white', { names: after.lineNames });
+    expect(lines.find((l) => l.id === before[3].id)?.name).toBe('Philidor');
+    expect(after.skipLines).toEqual([before[1].id]);
+    expect(after.skip).toBe(true);
   });
 });

@@ -17,7 +17,7 @@ export interface Line {
   nodes: MoveNode[];
   /** Node id of the last move (used in links). Changes on re-import; progress uses move keys instead. */
   leafId: string;
-  /** How many leading moves this line shares with the line before it (0 for line 1). */
+  /** How many leading moves this line shares with the line before it in the list (0 for line 1). */
   shared: number;
   /** Automatic name from where the line branches, e.g. "3…Nf6 4.Ng5"; "Main line" for line 1. */
   label: string;
@@ -46,44 +46,62 @@ const markerIn = (texts: string[] | undefined) => {
 
 export const fmtMove = (n: MoveNode) => `${moveNumber(n.ply)}${n.san}`;
 
-export function splitLines(root: RootNode, color: 'white' | 'black', names: Record<string, string> = {}): Line[] {
-  const paths: { nodes: MoveNode[]; trainable: boolean }[] = [];
-  // Iterative DFS so a very deep comb can't overflow the stack; children[0] first.
-  const stack: { node: TreeNode; path: MoveNode[]; trainable: boolean }[] = [{ node: root, path: [], trainable: true }];
+export interface SplitOptions {
+  /** Your own names, by line id. */
+  names?: Record<string, string>;
+  /**
+   * Line order. 'mainLast' (default, Chessable style): at every branch the side lines come first, in the
+   * order the study lists them, and the main move's line comes last. 'mainFirst': the main line first.
+   */
+  order?: 'mainLast' | 'mainFirst';
+}
+
+export function splitLines(root: RootNode, color: 'white' | 'black', opts: SplitOptions = {}): Line[] {
+  const names = opts.names ?? {};
+  const mainLast = (opts.order ?? 'mainLast') === 'mainLast';
+  const paths: { nodes: MoveNode[]; trainable: boolean; branch: number }[] = [];
+  // Iterative DFS so a very deep comb can't overflow the stack.
+  // `branch` = index of the deepest move on the path that isn't its parent's first choice (-1 = main line).
+  const stack: { node: TreeNode; path: MoveNode[]; trainable: boolean; branch: number }[] = [{ node: root, path: [], trainable: true, branch: -1 }];
   while (stack.length) {
-    const { node, path, trainable } = stack.pop()!;
+    const { node, path, trainable, branch } = stack.pop()!;
     if (node.children.length === 0) {
-      if (path.length) paths.push({ nodes: path, trainable });
+      if (path.length) paths.push({ nodes: path, trainable, branch });
       continue;
     }
-    for (let i = node.children.length - 1; i >= 0; i--) {
+    const n = node.children.length;
+    // Push in reverse of visiting order.
+    const visit = mainLast ? [...Array.from({ length: n - 1 }, (_, i) => i + 1), 0] : Array.from({ length: n }, (_, i) => i);
+    for (let j = visit.length - 1; j >= 0; j--) {
+      const i = visit[j];
       const c = node.children[i];
       const ok = trainable && !(i > 0 && isUserMove(c, color));
-      stack.push({ node: c, path: [...path, c], trainable: ok });
+      stack.push({ node: c, path: [...path, c], trainable: ok, branch: i > 0 ? path.length : branch });
     }
   }
+  const main = paths.find((p) => p.branch === -1)?.nodes ?? [];
   return paths.map((p, i) => {
     const prev = paths[i - 1]?.nodes;
     let shared = 0;
     if (prev) while (shared < prev.length && shared < p.nodes.length && prev[shared] === p.nodes[shared]) shared++;
-    // Where it leaves the main line, and where it leaves the line before it.
-    const main = paths[0].nodes;
+    // Where it leaves the main line, and its own branch move (the deepest move that isn't a first choice).
     let off = 0;
     while (off < main.length && off < p.nodes.length && main[off] === p.nodes[off]) off++;
+    const b = p.branch;
     let label = 'Main line';
-    if (i > 0) {
-      const own = p.nodes.slice(shared, shared + 2).map(fmtMove);
-      label = off < shared ? `${fmtMove(p.nodes[off])} ${shared > off + 1 ? '… ' : ''}${own[0]}` : own.join(' ');
+    if (b >= 0) {
+      const own = p.nodes.slice(b, b + 2).map(fmtMove);
+      label = off < b ? `${fmtMove(p.nodes[off])} ${b > off + 1 ? '… ' : ''}${own[0]}` : own.join(' ');
     }
-    const id = i === 0 ? 'main' : p.nodes[shared].key;
-    const branch = p.nodes[shared];
+    // Stable id: the key of its own branch move, so it doesn't depend on the order or on other lines.
+    const id = b < 0 ? 'main' : p.nodes[b].key;
+    const branchNode = b < 0 ? undefined : p.nodes[b];
+    const after = b < 0 ? undefined : p.nodes[b + 1];
     // A [Line: …] note on the branch move, or on the move right after it (the two moves of the label).
-    const after = p.nodes[shared + 1];
-    const marker =
-      i === 0
-        ? markerIn(root.comments) ?? markerIn(p.nodes[0].startingComments)
-        : markerIn(branch.startingComments) ?? markerIn(branch.comments) ??
-          (after ? markerIn(after.startingComments) ?? markerIn(after.comments) : undefined);
+    const marker = !branchNode
+      ? markerIn(root.comments) ?? markerIn(p.nodes[0].startingComments)
+      : markerIn(branchNode.startingComments) ?? markerIn(branchNode.comments) ??
+        (after ? markerIn(after.startingComments) ?? markerIn(after.comments) : undefined);
     const name = names[id]?.trim() || marker || label;
     return { id, number: i + 1, nodes: p.nodes, leafId: p.nodes[p.nodes.length - 1].id, shared, label, name, trainable: p.trainable };
   });

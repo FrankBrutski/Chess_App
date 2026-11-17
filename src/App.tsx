@@ -5,6 +5,7 @@ import { CoursePage } from './pages/Course';
 import { ImportPage } from './pages/Import';
 import { Reader } from './pages/Reader';
 import { Settings } from './pages/Settings';
+import { TrainPage } from './pages/Train';
 import { IssuesPage } from './pages/Issues';
 import { requestPersistence } from './lib/db';
 
@@ -24,6 +25,8 @@ export function App() {
       return <ImportPage courseId={id} sectionId={sub} />;
     case 'issues':
       return <IssuesPage courseId={id} />;
+    case 'train':
+      return <TrainPage kind={id} a={sub} b={sub2} />;
     case 'settings':
       return <Settings />;
     default:

@@ -2,6 +2,12 @@ import { useEffect, useState } from 'react';
 import { exportBackup, importBackup, requestPersistence } from '../lib/db';
 import { navigate } from '../router';
 import { getEngineDepth, getEngineLines, setEngineDepth, setEngineLines } from '../lib/prefs';
+import {
+  getHoneyLearn, getHoneyReview, getLadder, getMissPolicy, getRetryBack, getReviewNotes, getShowNewMoves, setHoneyLearn,
+  setHoneyReview, setLadder, setMissPolicy, setRetryBack, setReviewNotes, setShowNewMoves,
+} from '../lib/prefs';
+import { getLineOrder, setLineOrder } from '../lib/prefs';
+import { CHESSABLE_LADDER, DEFAULT_LADDER, formatLadder, parseLadder, type MissPolicy } from '../lib/srs';
 import { getAutoLink, getBoldNotation, getLichessEnabled, getToken, setAutoLink, setBoldNotation, setLichessEnabled, setToken as storeToken } from '../lib/prefs';
 
 export function Settings() {
@@ -13,6 +19,25 @@ export function Settings() {
   const [lichessOn, setLichessOn] = useState(getLichessEnabled());
   const [depth, setDepth] = useState(getEngineDepth());
   const [lines, setLines] = useState(getEngineLines());
+  const [ladderText, setLadderText] = useState(formatLadder(getLadder()));
+  const [ladderMsg, setLadderMsg] = useState<string>();
+  const [miss, setMiss] = useState(getMissPolicy());
+  const [retry, setRetry] = useState(getRetryBack());
+  const [reviewNotes, setRN] = useState(getReviewNotes());
+  const [showNew, setSN] = useState(getShowNewMoves());
+  const [hl, setHl] = useState(getHoneyLearn());
+  const [order, setOrder] = useState(getLineOrder());
+  const [hr, setHr] = useState(getHoneyReview());
+  const saveLadder = (text: string) => {
+    setLadderText(text);
+    try {
+      const l = parseLadder(text);
+      setLadder(formatLadder(l) === formatLadder(DEFAULT_LADDER) ? null : l);
+      setLadderMsg(`Saved: ${l.length} steps.`);
+    } catch (e) {
+      setLadderMsg(e instanceof Error ? e.message : 'Check the steps.');
+    }
+  };
 
   useEffect(() => {
     void requestPersistence().then(setPersisted);
@@ -89,6 +114,74 @@ export function Settings() {
           <input type="checkbox" checked={bold} onChange={(e) => { setBold(e.target.checked); setBoldNotation(e.target.checked); }} />
           <span>Show moves and squares in the text in bold (not clickable)</span>
         </label>
+      </section>
+
+      <section className="stack">
+        <h2>Lines</h2>
+        <label className="field">
+          <span>Order of lines in a comb</span>
+          <select value={order} onChange={(e) => { const v = e.target.value as 'mainLast' | 'mainFirst'; setOrder(v); setLineOrder(v); }}>
+            <option value="mainLast">Main line last (Chessable style): side lines in study order, then the main line</option>
+            <option value="mainFirst">Main line first</option>
+          </select>
+        </label>
+        <p className="muted small">Changing the order renumbers lines but keeps their names, drill choices and progress.</p>
+      </section>
+
+      <section className="stack">
+        <h2>Training</h2>
+        <p className="muted small">
+          Each of your moves climbs one step of the review ladder when you get it right. Steps use m, h, d, w, mo or y.
+        </p>
+        <label className="field">
+          <span>Review ladder</span>
+          <input value={ladderText} onChange={(e) => saveLadder(e.target.value)} aria-label="Review ladder" />
+        </label>
+        <div className="row">
+          <button type="button" onClick={() => saveLadder(formatLadder(DEFAULT_LADDER))}>Your default</button>
+          <button type="button" onClick={() => saveLadder(formatLadder(CHESSABLE_LADDER))}>Chessable's ladder</button>
+        </div>
+        {ladderMsg && <p className="small">{ladderMsg}</p>}
+        <div className="row">
+          <label className="field">
+            <span>A miss in a review</span>
+            <select value={miss} onChange={(e) => { setMiss(e.target.value as MissPolicy); setMissPolicy(e.target.value as MissPolicy); }}>
+              <option value="reset">Back to the first step</option>
+              <option value="back2">Down two steps</option>
+              <option value="back1">Down one step</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>After a miss, replay from</span>
+            <select value={retry} onChange={(e) => { setRetry(+e.target.value); setRetryBack(+e.target.value); }}>
+              <option value={0}>That move</option>
+              {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n} of your moves back</option>)}
+              <option value={9}>The start of the line</option>
+            </select>
+          </label>
+        </div>
+        <label className="toggle">
+          <input type="checkbox" checked={reviewNotes} onChange={(e) => { setRN(e.target.checked); setReviewNotes(e.target.checked); }} />
+          <span>Show the notes during reviews (never ahead of the board)</span>
+        </label>
+        <label className="toggle">
+          <input type="checkbox" checked={showNew} onChange={(e) => { setSN(e.target.checked); setShowNewMoves(e.target.checked); }} />
+          <span>When learning, show each new move with an arrow first</span>
+        </label>
+        <div className="row">
+          <label className="field">
+            <span>Honey per move learned</span>
+            <select value={hl} onChange={(e) => { setHl(+e.target.value); setHoneyLearn(+e.target.value); }}>
+              {[0, 1, 2, 3, 5].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </label>
+          <label className="field">
+            <span>Honey per correct review</span>
+            <select value={hr} onChange={(e) => { setHr(+e.target.value); setHoneyReview(+e.target.value); }}>
+              {[0, 1, 2, 3, 5].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </label>
+        </div>
       </section>
 
       <section className="stack">
