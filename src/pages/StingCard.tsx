@@ -5,7 +5,7 @@ import { navigate } from '../router';
 import { ShotImage } from '../components/ShotImage';
 import { CropBoard } from '../components/CropBoard';
 import { StingSetup } from '../components/StingSetup';
-import { Board } from '../components/Board';
+import { StingExplorer } from '../components/StingExplorer';
 import { deleteSting, saveCrop, SOURCE_KINDS, STATUS_LABEL } from '../lib/stings';
 import { getStingsNewestFirst } from '../lib/prefs';
 import type { Sting } from '../lib/model';
@@ -30,6 +30,9 @@ export function StingCard({ id }: { id: string }) {
   }, [listed, card]);
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const stepKey = `${id}|${!card ? '' : !card.cropped && card.status === 'inbox' ? 'crop' : !card.fen || editing ? 'setup' : 'view'}`;
+  // Each step (and each card) starts at the top of the page.
+  useEffect(() => { window.scrollTo(0, 0); }, [stepKey]);
 
   if (card === undefined) return <div className="page" />;
   if (!card) return <div className="page"><p>Card not found.</p><button type="button" onClick={() => navigate('/stings')}>Back to Stings</button></div>;
@@ -54,21 +57,19 @@ export function StingCard({ id }: { id: string }) {
 
       {step === 'setup' && <StingSetup key={card.id} card={card} onSaved={() => setEditing(false)} />}
 
-      {step === 'view' && card.fen && (
-        <div className="stack">
-          <Board fen={card.fen} orientation={card.orientation ?? (card.fen.split(' ')[1] === 'b' ? 'black' : 'white')} />
-          <p className="center"><b>{card.fen.split(' ')[1] === 'b' ? 'Black' : 'White'} to move</b></p>
+      {step === 'view' && card.root && (
+        <>
           {(kind || src?.timeControl || src?.white || src?.event || src?.date) && (
             <p className="muted small center">
               {[kind, src?.timeControl, src?.platform, src?.white && src?.black ? `${src.white} – ${src.black}` : src?.white || src?.black, src?.event, src?.date, src?.note].filter(Boolean).join(' · ')}
             </p>
           )}
-          <p className="muted small center">Exploring lines and marking the best move comes in the next update.</p>
-          <div className="row">
-            <button type="button" onClick={() => setEditing(true)}>Edit position</button>
+          <StingExplorer key={card.id} card={card} />
+          <div className="row" style={{ marginTop: 12 }}>
+            <button type="button" onClick={() => setEditing(true)}>Edit position or source</button>
           </div>
           {card.shotId && <ShotImage shotId={card.shotId} className="setup-shot" alt="Board from the screenshot" />}
-        </div>
+        </>
       )}
 
       <div className="row" style={{ marginTop: 16 }}>

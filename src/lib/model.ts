@@ -19,7 +19,12 @@ export interface MoveNode {
   nags: number[];
   shapes: Shape[];
   children: MoveNode[];
+  /** Stings only: what a line from the puzzle position is (set on its first move). */
+  tag?: LineTag;
 }
+
+/** best = the line to play; also = also wins; refute = a tempting move that fails; idea = explainer, never drilled. */
+export type LineTag = 'best' | 'also' | 'refute' | 'idea';
 
 export interface RootNode {
   id: 'root';

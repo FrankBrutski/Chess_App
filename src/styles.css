@@ -490,3 +490,16 @@ div.shot-full { aspect-ratio: 3 / 4; }
 .chip { min-height: 34px; padding: 4px 12px; border-radius: 999px; font-size: 14px; }
 .chip.on { background: var(--honey-deep); border-color: var(--honey-deep); color: #fff; }
 .source-box summary { cursor: pointer; padding: 6px 0; }
+
+/* Exploring a Sting */
+.sting-lines { display: flex; flex-direction: column; gap: 6px; }
+.sting-line { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; min-height: 40px; }
+.sting-line.on { border-color: var(--honey-deep); box-shadow: inset 0 0 0 1px var(--honey-deep); }
+.tag-best { background: var(--good); color: var(--surface); }
+.tag-also { background: var(--honey); color: #2a1d0e; }
+.tag-refute { background: var(--bad); color: var(--surface); }
+.tag-idea { background: var(--var); color: var(--surface); }
+.tag-none { background: var(--line); color: var(--muted); }
+.tag-box { padding: 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); gap: 8px; margin: 0; }
+.note-input { font-family: var(--read-font); font-size: 15px; }
+.ready-box { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 6px; }
