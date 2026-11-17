@@ -233,3 +233,33 @@ cg-board {
 .mv.current, .inline-move.active { background: var(--current-bg); }
 .variation { border-left-color: var(--var); }
 .hive-sub { margin: -8px 0 12px; text-align: center; }
+
+/* ---------- hives, sections ---------- */
+.small-text { font-size: 15px; color: var(--honey-deep); font-weight: 600; min-width: 0; }
+select { width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font: inherit; color: var(--text); font-size: 16px; }
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; }
+fieldset.target { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 10px; background: var(--surface); }
+fieldset.target legend { font-weight: 600; padding: 0 4px; }
+.edit-box { padding: 12px; border: 1px dashed var(--honey-deep); border-radius: var(--radius); }
+.color-group { margin-bottom: 18px; }
+.color-head { display: flex; align-items: center; gap: 8px; font-size: 18px; }
+.color-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--text); }
+.color-dot.white { background: #fff; }
+.color-dot.black { background: #111; }
+.tier-head { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--honey-deep); margin: 10px 0 6px; }
+.comb-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; }
+.comb-row > .card { flex: 1; min-width: 0; }
+.comb-tools { display: flex; gap: 4px; }
+.comb-tools button { min-width: 40px; padding: 4px 8px; }
+.move-to { width: 100%; }
+details.section { margin: 0 0 14px; border-left: 3px solid var(--honey); padding-left: 10px; }
+details.section > summary { list-style: none; display: flex; justify-content: space-between; align-items: baseline; cursor: pointer; padding: 6px 0 8px; }
+details.section > summary::-webkit-details-marker { display: none; }
+details.section > summary::before { content: '▾'; color: var(--honey-deep); margin-right: 6px; }
+details.section:not([open]) > summary::before { content: '▸'; }
+.section-name { font-weight: 700; flex: 1; }
+.section-tools { display: flex; gap: 6px; margin-bottom: 8px; }
+.section-tools input { flex: 1; }
+.section-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.section-actions button { min-height: 36px; padding: 6px 12px; font-size: 14px; }

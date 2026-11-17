@@ -45,7 +45,11 @@ export interface Issue {
 
 export interface Chapter {
   id: string;
+  /** The hive (repertoire) this comb belongs to. */
   courseId: string;
+  /** The section within the hive. */
+  sectionId: string;
+  /** Position within its section. */
   order: number;
   title: string;
   orientation: 'white' | 'black';
@@ -55,11 +59,29 @@ export interface Chapter {
   importedAt: number;
 }
 
+/** A group of combs inside a hive, usually one Lichess study or one theme. */
+export interface Section {
+  id: string;
+  name: string;
+  /** Lichess study this section syncs from, if any. */
+  sourceUrl?: string;
+  lichessStudyId?: string;
+}
+
+/** A hive = one repertoire, e.g. "King's Gambit" as White, main. */
 export interface Course {
   id: string;
   name: string;
-  /** Lichess study URL when the course is linked to a live study. */
+  /** The side you play in this repertoire. */
+  color: 'white' | 'black';
+  /** 1 = main, 2 = secondary, 3 = tertiary, ... */
+  tier: number;
+  /** Position among hives of the same colour and tier. */
+  order: number;
+  sections: Section[];
+  /** @deprecated moved to Section; kept so old data can be migrated. */
   sourceUrl?: string;
+  /** @deprecated moved to Section. */
   lichessStudyId?: string;
   createdAt: number;
   updatedAt: number;

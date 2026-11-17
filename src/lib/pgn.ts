@@ -133,13 +133,22 @@ export function parseChapters(pgnText: string): ParsedChapter[] {
   return games.map((g, i) => convertGame(g, i));
 }
 
-export function toChapter(p: ParsedChapter, courseId: string, order: number, id: string, issues: Issue[] = []): Chapter {
+export function toChapter(
+  p: ParsedChapter,
+  courseId: string,
+  sectionId: string,
+  order: number,
+  id: string,
+  issues: Issue[] = [],
+  orientation: 'white' | 'black' = p.orientation,
+): Chapter {
   return {
     id,
     courseId,
+    sectionId,
     order,
     title: p.title,
-    orientation: p.orientation,
+    orientation,
     lichessChapterId: p.lichessChapterId,
     root: p.root,
     issues,
