@@ -40,6 +40,7 @@ export function Library() {
         {(hives?.length ?? 0) > 1 && (
           <button type="button" className="icon-btn small-text" onClick={() => setReorder(!reorder)}>{reorder ? 'Done' : 'Reorder'}</button>
         )}
+        <button type="button" className="icon-btn small-text" onClick={() => navigate('/board')} aria-label="Master board" title="Master board: look up a position">Board</button>
         <button type="button" className="icon-btn" onClick={() => navigate('/settings')} aria-label="Settings">⚙</button>
       </header>
       {(hives?.length ?? 0) > 0 && (
