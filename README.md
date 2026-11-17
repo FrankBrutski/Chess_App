@@ -25,6 +25,22 @@ We can consider 12...Nf6? but better is <12...Bf6 13. Bxf6 (13. Nxf6 gxf6??) gxf
 - `( … )` inside the brackets is a side line, an alternative to the move before it.
 - A bracketed line with an illegal move is underlined in red and listed in Import issues.
 
+What the brackets accept (all covered by `src/lib/__tests__/brackets.test.ts`):
+
+| Written | Accepted |
+| --- | --- |
+| Move numbers | `12.Nf3`, `12. Nf3`, `12...Nf6`, `12... Nf6`, `12…Nf6`, `12..Nf6`, `12. ... Nf6`; or no number at all |
+| Start position | Any earlier move in the line you're reading, a main-line move still to come, or (with no number) the current position, then the move just played |
+| Castling | `O-O`, `O-O-O`, `0-0`, `0-0-0` |
+| Promotion, check, mate | `e8=Q`, `e8Q`, `+`, `#` (a missing or extra `+` is fine) |
+| Marks and evaluations | `Nf6!?` or `Nf6 !?`, `$6`, `+=`, `+/=`, `=`, `∞`, `1-0`, `*`: kept as text, not moves |
+| Side lines | `(…)` after a move = an alternative to that move; several in a row; nested to any depth |
+| Punctuation | Brackets next to `(`, `)`, quotes, `.`, `,`, `:`; commas inside the brackets |
+| Several lines | Any number of `<…>` in one comment |
+
+Flagged (red underline + Import issues): an illegal move, a move number that doesn't fit the position,
+unbalanced `(` `)`, prose inside the brackets (`<see above>`), and a lone `<` or `>` without its partner.
+
 ## Install on your iPhone
 
 Open the app's URL in **Safari**, tap **Share → Add to Home Screen**. It then runs full-screen and offline.

@@ -28,8 +28,11 @@ export type CommentPiece =
   | { kind: 'bad'; text: string };
 
 // Move number like "12.", "12...", "12…" optionally directly followed by a SAN.
-const NUM = /^(\d+)(\.\.\.|…|\.)$/;
-const NUM_SAN = /^(\d+)(\.\.\.|…|\.)(.+)$/;
+// Dots: "12." White; "12...", "12..", "12…", "12.…" Black.
+const NUM = /^(\d+)(\.{1,3}|…|\.…)$/;
+const NUM_SAN = /^(\d+)(\.{1,3}|…|\.…)([^.…].*)$/;
+/** A lone "..." or "…" after "12." (as in "12. ... Nf6") means Black's move. */
+const ELLIPSIS = /^(\.{2,3}|…)$/;
 const SAN = /^(?:[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](?:=?[QRBN])?|O-O(?:-O)?|0-0(?:-0)?)[+#]?[!?]*$/;
 
 interface Token { text: string; start: number; end: number }
@@ -57,9 +60,15 @@ function trimToken(t: Token): Token {
 }
 
 const plyFromNumber = (num: number, dots: string) => (num - 1) * 2 + (dots === '.' ? 0 : 1);
+const blackPly = (ply: number) => (ply % 2 === 0 ? ply + 1 : ply);
 
+/** Lenient SAN clean-up: 0-0 castling, missing "=" in promotions, trailing marks and e.p. */
 function cleanSan(s: string) {
-  return s.replace(/[!?]+$/, '').replace(/0/g, 'O');
+  return s
+    .replace(/[!?]+$/, '')
+    .replace(/^0-0(-0)?/, (m) => m.replace(/0/g, 'O'))
+    .replace(/^([a-h](?:x[a-h])?[18])([QRBNqrbn])/, (_, sq, p) => `${sq}=${p.toUpperCase()}`)
+    .replace(/(e\.?p\.?)$/, '');
 }
 
 /**
@@ -83,7 +92,10 @@ export function parseCommentMoves(
   opts: ParseOptions = {},
 ): CommentPiece[] {
   // Positions available as starting points: this node and its ancestors (nearest first).
-  const candidates = [node, ...[...ancestors].reverse()];
+  // ...then main-line moves still to come, for "the plan is <14.Bg5 ...>" written ahead of time.
+  const ahead: TreeNode[] = [];
+  for (let n = node.children[0]; n; n = n.children[0]) ahead.push(n);
+  const candidates = [node, ...[...ancestors].reverse(), ...ahead];
   const pieces: CommentPiece[] = [];
   const marker = new RegExp(MARKER.source, 'g');
   const plain = (t: string): CommentPiece[] => (opts.auto ? scan(t, candidates, false) : [{ kind: 'text', text: t }]);
@@ -238,7 +250,9 @@ function bracketTokens(text: string): BTok[] {
   return out;
 }
 
-const NAG_TOKEN = /^(\$\d+|[!?]{1,2}|[+\-=±∓⩲⩱∞]{1,3})$/;
+// Tokens inside a bracketed line that are allowed but not moves:
+// NAGs ($1), marks (!?, ??), evaluations (+-, =, ±, +/=, ∞), results, e.p., novelty "N"/"TN".
+const SKIP_TOKEN = /^(\$\d+|[!?]{1,2}|[+\-=±∓⩲⩱∞/]{1,3}|1-0|0-1|1\/2-1\/2|½-½|\*|e\.p\.?|ep|T?N|[,;:.]+)$/;
 
 /**
  * Parse "<12...Nf6 13. Bxf6 (13. Nxf6 gxf6??) gxf6>" into clickable moves.
@@ -253,10 +267,14 @@ function parseBracket(text: string, candidates: TreeNode[]): CommentPiece[] | un
   const first = toks[0].text;
   const m1 = NUM_SAN.exec(first) ?? NUM.exec(first);
   if (m1) wantPly = plyFromNumber(+m1[1], m1[2]);
+  if (m1 && !NUM_SAN.test(first) && toks[1] && ELLIPSIS.test(toks[1].text) && wantPly !== undefined) wantPly = blackPly(wantPly);
 
-  for (const base of candidates) {
+  // With a move number: any position in the chapter's path with that number.
+  // Without one: the current position, then the position before the last move
+  // (an alternative to the move just played).
+  const pool = wantPly !== undefined ? candidates : candidates.slice(0, 2);
+  for (const base of pool) {
     if (wantPly !== undefined && base.ply !== wantPly) continue;
-    if (wantPly === undefined && base !== candidates[0]) break;
     const marks = parseBracketFrom(toks, base);
     if (!marks) continue;
     const pieces: CommentPiece[] = [];
@@ -279,6 +297,8 @@ function parseBracket(text: string, candidates: TreeNode[]): CommentPiece[] | un
   }
   return undefined;
 }
+
+const SAN_LIKE = /[a-h][1-8]|O-O|0-0/;
 
 interface Mark { start: number; end: number; line: GhostMove[]; index: number; depth: number }
 
@@ -312,8 +332,9 @@ function parseBracketFrom(toks: BTok[], base: TreeNode): Mark[] | undefined {
       }
       const numOnly = NUM.exec(t.text);
       if (numOnly) { pendingNum = { start: t.start, ply: plyFromNumber(+numOnly[1], numOnly[2]) }; i++; continue; }
-      if (NAG_TOKEN.test(t.text)) { i++; continue; }
-      let san = t.text;
+      if (pendingNum && ELLIPSIS.test(t.text)) { pendingNum.ply = blackPly(pendingNum.ply); i++; continue; }
+      if (SKIP_TOKEN.test(t.text) && !SAN_LIKE.test(t.text)) { i++; continue; }
+      let san = t.text.replace(/[,;:.]+$/, '');
       let start = pendingNum?.start ?? t.start;
       let wantPly = pendingNum?.ply;
       const ns = NUM_SAN.exec(t.text);
@@ -328,7 +349,7 @@ function parseBracketFrom(toks: BTok[], base: TreeNode): Mark[] | undefined {
       const s = makeSanAndPlay(pos, move);
       line.push({ san: s, uci, fen: makeFen(pos.toSetup()), ply: plyBefore + 1 });
       // Every move in this line shares the final array, so stepping forward follows this line.
-      marks.push({ start, end: t.end, line, index: line.length - 1, depth });
+      marks.push({ start, end: t.start + t.text.replace(/[,;:.]+$/, '').length, line, index: line.length - 1, depth });
       i++;
     }
     if (pendingNum) ok = false;
