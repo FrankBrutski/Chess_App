@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { exportBackup, importBackup, requestPersistence } from '../lib/db';
 import { navigate } from '../router';
+import { getEngineDepth, getEngineLines, setEngineDepth, setEngineLines } from '../lib/prefs';
 import { getAutoLink, getBoldNotation, getLichessEnabled, getToken, setAutoLink, setBoldNotation, setLichessEnabled, setToken as storeToken } from '../lib/prefs';
 
 export function Settings() {
@@ -10,6 +11,8 @@ export function Settings() {
   const [autoLink, setAuto] = useState(getAutoLink());
   const [bold, setBold] = useState(getBoldNotation());
   const [lichessOn, setLichessOn] = useState(getLichessEnabled());
+  const [depth, setDepth] = useState(getEngineDepth());
+  const [lines, setLines] = useState(getEngineLines());
 
   useEffect(() => {
     void requestPersistence().then(setPersisted);
@@ -86,6 +89,30 @@ export function Settings() {
           <input type="checkbox" checked={bold} onChange={(e) => { setBold(e.target.checked); setBoldNotation(e.target.checked); }} />
           <span>Show moves and squares in the text in bold (not clickable)</span>
         </label>
+      </section>
+
+      <section className="stack">
+        <h2>Engine</h2>
+        <p className="muted small">
+          Tap <strong>SF</strong> in the reader to see Stockfish's evaluation. Stockfish 19 (lite network) runs on this
+          phone, works offline and sends nothing anywhere. It stops when it reaches the depth below, when you switch it
+          off, or when the app is in the background.
+        </p>
+        <div className="row">
+          <label className="field">
+            <span>Depth</span>
+            <select value={depth} onChange={(e) => { setDepth(+e.target.value); setEngineDepth(+e.target.value); }}>
+              {[12, 16, 20, 24, 28].map((d) => <option key={d} value={d}>{d}{d === 20 ? ' (default)' : ''}</option>)}
+              <option value={0}>No limit (uses more battery)</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Lines shown</span>
+            <select value={lines} onChange={(e) => { setLines(+e.target.value); setEngineLines(+e.target.value); }}>
+              {[1, 2, 3].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </label>
+        </div>
       </section>
 
       <section className="stack">

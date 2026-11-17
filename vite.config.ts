@@ -7,7 +7,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 // talk to lichess.org (study downloads). Anything else is blocked by the browser.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self'",
+  "script-src 'self' 'wasm-unsafe-eval'", // lets the on-device Stockfish (WebAssembly) start; no JS eval
   "style-src 'self' 'unsafe-inline'", // the board positions pieces with inline styles
   "img-src 'self' data: blob:", // piece images are data: URIs
   "connect-src 'self' https://lichess.org",
@@ -50,7 +50,8 @@ export default defineConfig({
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
-      workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2}'] },
+      // Precache everything, including the 1.8 MB Stockfish engine, so the app works fully offline.
+      workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2,wasm}'], maximumFileSizeToCacheInBytes: 4 * 1024 * 1024 },
     }),
   ],
   test: { include: ['src/**/*.test.ts'] },

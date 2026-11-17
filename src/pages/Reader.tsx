@@ -13,7 +13,8 @@ import { annotateChapter } from '../lib/annotations';
 import { Board } from '../components/Board';
 import { ChapterText, type Ghost } from '../components/ChapterText';
 import { navigate } from '../router';
-import { getAutoLink, getBoldNotation } from '../lib/prefs';
+import { getAutoLink, getBoldNotation, getEngineOn, setEngineOn } from '../lib/prefs';
+import { EnginePanel } from '../components/EnginePanel';
 
 const strip = (san: string) => san.replace(/[+#!?]/g, '');
 
@@ -43,6 +44,8 @@ export function Reader({ chapterId, startNodeId }: { chapterId: string; startNod
   const [feedback, setFeedback] = useState<Feedback>();
   const [hint, setHint] = useState<Shape[]>([]);
   const [resetKey, setResetKey] = useState(0);
+  const [engineOn, setEngineOnState] = useState(getEngineOn());
+  const toggleEngine = () => { setEngineOn(!engineOn); setEngineOnState(!engineOn); };
   const textRef = useRef<HTMLDivElement>(null);
 
   // Reset when switching chapters (or jumping to a spot from the issues list).
@@ -223,6 +226,15 @@ export function Reader({ chapterId, startNodeId }: { chapterId: string; startNod
           <div className="reader-course">{course?.name}</div>
           <div className="reader-chapter">{chapter.title}</div>
         </div>
+        <button
+          type="button"
+          className={`engine-toggle${engineOn ? ' on' : ''}`}
+          onClick={toggleEngine}
+          aria-pressed={engineOn}
+          title="Stockfish evaluation (runs on this phone)"
+        >
+          SF
+        </button>
         <div className="reader-chapnav">
           <button type="button" className="icon-btn" disabled={!prevCh} onClick={() => prevCh && navigate(`/read/${prevCh.id}`)} aria-label="Previous comb (chapter)" title="Previous comb">⟨</button>
           <button type="button" className="icon-btn" disabled={!nextCh} onClick={() => nextCh && navigate(`/read/${nextCh.id}`)} aria-label="Next comb (chapter)" title="Next comb">⟩</button>
@@ -244,11 +256,18 @@ export function Reader({ chapterId, startNodeId }: { chapterId: string; startNod
           />
           {ghost && (
             <div className="ghost-bar">
-              <span>Line from the text</span>
+              <span>{ghost.source === 'engine' ? 'Engine line' : 'Line from the text'}</span>
               <button type="button" className="link-btn" onClick={() => { setCurrentId(ghost.baseId); setGhost(undefined); }}>
-                Back to the main text
+                Back to the study
               </button>
             </div>
+          )}
+          {engineOn && (
+            <EnginePanel
+              fen={boardFen}
+              paused={awaitingUser}
+              onPlayLine={ghost ? undefined : (line) => { setHint([]); setGhost({ line, index: 0, baseId: currentId, source: 'engine' }); }}
+            />
           )}
           {feedback && (
             <div className={`feedback fb-${feedback.kind}`}>
