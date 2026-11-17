@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { exportBackup, importBackup, requestPersistence } from '../lib/db';
-import { navigate } from '../router';
+import { goBack } from '../router';
 import { appVersion, buildTime, checkForUpdate } from '../lib/update';
 import { getEngineDepth, getEngineLines, setEngineDepth, setEngineLines } from '../lib/prefs';
 import {
@@ -89,11 +89,12 @@ export function Settings() {
   return (
     <div className="page">
       <header className="page-header">
-        <button type="button" className="icon-btn" onClick={() => navigate('/')} aria-label="Back">‹</button>
+        <button type="button" className="icon-btn" onClick={() => goBack()} aria-label="Back">‹</button>
         <h1>Settings</h1>
         <span />
       </header>
 
+      <h3 className="set-head">General</h3>
       <details className="set-group">
         <summary>
           <h2>Appearance</h2>
@@ -188,6 +189,81 @@ export function Settings() {
         <button type="button" className="link-btn" onClick={() => changeText(DEFAULT_TEXT)}>Reset text settings</button>
         </div>
       </details>
+      <details className="set-group">
+        <summary>
+          <h2>Engine</h2>
+          <span className="muted small">Stockfish depth and lines</span>
+        </summary>
+        <div className="stack">
+        <p className="muted small">
+          Tap <strong>SF</strong> in the reader to see Stockfish's evaluation. Stockfish 19 (lite network) runs on this
+          phone, works offline and sends nothing anywhere. It stops when it reaches the depth below, when you switch it
+          off, or when the app is in the background.
+        </p>
+        <div className="row">
+          <label className="field">
+            <span>Depth</span>
+            <select value={depth} onChange={(e) => { setDepth(+e.target.value); setEngineDepth(+e.target.value); }}>
+              {[12, 16, 20, 24, 28].map((d) => <option key={d} value={d}>{d}{d === 20 ? ' (default)' : ''}</option>)}
+              <option value={0}>No limit (uses more battery)</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Lines shown</span>
+            <select value={lines} onChange={(e) => { setLines(+e.target.value); setEngineLines(+e.target.value); }}>
+              {[1, 2, 3].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </label>
+        </div>
+        </div>
+      </details>
+      <details className="set-group">
+        <summary>
+          <h2>Backup</h2>
+          <span className="muted small">Save or restore your hives</span>
+        </summary>
+        <div className="stack">
+        <p className="muted small">
+          Your hives live on this device. Save a backup to Files or iCloud Drive now and then.
+          {persisted === false && ' Storage is not yet marked as persistent; adding the app to your Home Screen fixes that.'}
+        </p>
+        <p className="muted small">
+          The backup covers openings and training progress. Stings (tactics cards and their screenshots) join the backup
+          in an upcoming update.
+        </p>
+        <button type="button" className="primary wide" onClick={doExport}>Save a backup</button>
+        <label className="file-drop compact">
+          <input type="file" accept="application/json,.json" onChange={(e) => doImport(e.target.files?.[0])} />
+          <span>Restore from a backup file</span>
+        </label>
+        {msg && <p className="small">{msg}</p>}
+        </div>
+      </details>
+      <details className="set-group">
+        <summary>
+          <h2>About</h2>
+          <span className="muted small">Version {appVersion}</span>
+        </summary>
+        <div className="stack">
+          <p className="small">
+            Apiary version <b>{appVersion}</b>
+            {buildTime && <span className="muted"> · built {new Date(buildTime).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</span>}
+          </p>
+          <button
+            type="button"
+            className="wide"
+            disabled={updateMsg === 'Checking…'}
+            onClick={async () => {
+              setUpdateMsg('Checking…');
+              setUpdateMsg((await checkForUpdate()) ? 'A new version is ready: tap Reload at the bottom.' : 'You have the latest version.');
+            }}
+          >
+            Check for updates
+          </button>
+          {updateMsg && <p className="muted small">{updateMsg}</p>}
+        </div>
+      </details>
+      <h3 className="set-head">Opening trainer</h3>
       <details className="set-group">
         <summary>
           <h2>Moves in your text</h2>
@@ -290,34 +366,6 @@ export function Settings() {
       </details>
       <details className="set-group">
         <summary>
-          <h2>Engine</h2>
-          <span className="muted small">Stockfish depth and lines</span>
-        </summary>
-        <div className="stack">
-        <p className="muted small">
-          Tap <strong>SF</strong> in the reader to see Stockfish's evaluation. Stockfish 19 (lite network) runs on this
-          phone, works offline and sends nothing anywhere. It stops when it reaches the depth below, when you switch it
-          off, or when the app is in the background.
-        </p>
-        <div className="row">
-          <label className="field">
-            <span>Depth</span>
-            <select value={depth} onChange={(e) => { setDepth(+e.target.value); setEngineDepth(+e.target.value); }}>
-              {[12, 16, 20, 24, 28].map((d) => <option key={d} value={d}>{d}{d === 20 ? ' (default)' : ''}</option>)}
-              <option value={0}>No limit (uses more battery)</option>
-            </select>
-          </label>
-          <label className="field">
-            <span>Lines shown</span>
-            <select value={lines} onChange={(e) => { setLines(+e.target.value); setEngineLines(+e.target.value); }}>
-              {[1, 2, 3].map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </label>
-        </div>
-        </div>
-      </details>
-      <details className="set-group">
-        <summary>
           <h2>Lichess</h2>
           <span className="muted small">Study downloads and token</span>
         </summary>
@@ -335,48 +383,6 @@ export function Settings() {
           <input type="password" autoComplete="off" value={token} onChange={(e) => saveToken(e.target.value)} placeholder="lip_…" />
         </label>
         <p className="muted small">Unlisted and public studies don't need this.</p>
-        </div>
-      </details>
-      <details className="set-group">
-        <summary>
-          <h2>Backup</h2>
-          <span className="muted small">Save or restore your hives</span>
-        </summary>
-        <div className="stack">
-        <p className="muted small">
-          Your hives live on this device. Save a backup to Files or iCloud Drive now and then.
-          {persisted === false && ' Storage is not yet marked as persistent; adding the app to your Home Screen fixes that.'}
-        </p>
-        <button type="button" className="primary wide" onClick={doExport}>Save a backup</button>
-        <label className="file-drop compact">
-          <input type="file" accept="application/json,.json" onChange={(e) => doImport(e.target.files?.[0])} />
-          <span>Restore from a backup file</span>
-        </label>
-        {msg && <p className="small">{msg}</p>}
-        </div>
-      </details>
-      <details className="set-group">
-        <summary>
-          <h2>About</h2>
-          <span className="muted small">Version {appVersion}</span>
-        </summary>
-        <div className="stack">
-          <p className="small">
-            Apiary version <b>{appVersion}</b>
-            {buildTime && <span className="muted"> · built {new Date(buildTime).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</span>}
-          </p>
-          <button
-            type="button"
-            className="wide"
-            disabled={updateMsg === 'Checking…'}
-            onClick={async () => {
-              setUpdateMsg('Checking…');
-              setUpdateMsg((await checkForUpdate()) ? 'A new version is ready: tap Reload at the bottom.' : 'You have the latest version.');
-            }}
-          >
-            Check for updates
-          </button>
-          {updateMsg && <p className="muted small">{updateMsg}</p>}
         </div>
       </details>
     </div>

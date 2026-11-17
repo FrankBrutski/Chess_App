@@ -115,7 +115,7 @@ export function MasterBoard() {
   return (
     <div className="page board-page">
       <header className="page-header">
-        <button type="button" className="icon-btn" onClick={() => navigate('/')} aria-label="Back">‹</button>
+        <button type="button" className="icon-btn" onClick={() => navigate('/openings')} aria-label="Back">‹</button>
         <h1 className="brand"><HexMark /> Master board</h1>
         <label className="icon-btn small-text shot-btn" title="Pin a screenshot above the board (stays on this phone, not saved)">
           <input

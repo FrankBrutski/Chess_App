@@ -58,7 +58,7 @@ export function CoursePage({ courseId }: { courseId: string }) {
   return (
     <div className="page">
       <header className="page-header">
-        <button type="button" className="icon-btn" onClick={() => navigate('/')} aria-label="Back">‹</button>
+        <button type="button" className="icon-btn" onClick={() => navigate('/openings')} aria-label="Back to openings">‹</button>
         <h1>{course.name}</h1>
         <button type="button" className="icon-btn small-text" onClick={() => setEditing(!editing)}>{editing ? 'Done' : 'Edit'}</button>
       </header>
@@ -209,7 +209,7 @@ export function CoursePage({ courseId }: { courseId: string }) {
         ) : (
           <div className="confirm">
             <span>Delete “{course.name}” and all its combs from this device?</span>
-            <button type="button" className="danger" onClick={async () => { await deleteCourse(course.id); navigate('/'); }}>
+            <button type="button" className="danger" onClick={async () => { await deleteCourse(course.id); navigate('/openings'); }}>
               Delete
             </button>
             <button type="button" onClick={() => setConfirming(false)}>Cancel</button>

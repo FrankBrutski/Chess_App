@@ -97,3 +97,43 @@ export interface Course {
   updatedAt: number;
 }
 
+
+// ---------- Tactics (Stings) ----------
+
+/** Inbox = just a screenshot; In progress = position set; Ready = has a best line and is drilled. */
+export type StingStatus = 'inbox' | 'progress' | 'ready';
+
+export type SourceKind = 'mine' | 'online' | 'otb' | 'video' | 'book';
+
+export interface StingSource {
+  kind?: SourceKind;
+  platform?: string;
+  timeControl?: string;
+  date?: string;
+  white?: string;
+  black?: string;
+  event?: string;
+  url?: string;
+}
+
+export interface Sting {
+  id: string;
+  status: StingStatus;
+  createdAt: number;
+  updatedAt: number;
+  /** The screenshot (or, once cropped, just the board) in the `shots` table. */
+  shotId?: string;
+  fen?: string;
+  title?: string;
+  themes?: string[];
+  root?: RootNode;
+  source?: StingSource;
+}
+
+/** A compressed image kept only on this phone. */
+export interface Shot {
+  id: string;
+  blob: Blob;
+  width: number;
+  height: number;
+}

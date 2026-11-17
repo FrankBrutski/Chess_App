@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { useRoute } from './router';
+import { Home } from './pages/Home';
 import { Library } from './pages/Library';
 import { CoursePage } from './pages/Course';
 import { Reader } from './pages/Reader';
@@ -11,6 +12,8 @@ const ImportPage = lazy(() => import('./pages/Import').then((m) => ({ default: m
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
 const TrainPage = lazy(() => import('./pages/Train').then((m) => ({ default: m.TrainPage })));
 const MasterBoard = lazy(() => import('./pages/MasterBoard').then((m) => ({ default: m.MasterBoard })));
+const StingsPage = lazy(() => import('./pages/Stings').then((m) => ({ default: m.StingsPage })));
+const StingCard = lazy(() => import('./pages/StingCard').then((m) => ({ default: m.StingCard })));
 const IssuesPage = lazy(() => import('./pages/Issues').then((m) => ({ default: m.IssuesPage })));
 
 export function App() {
@@ -44,7 +47,13 @@ function route(page: string | undefined, id: string, sub: string, sub2: string) 
       return <MasterBoard />;
     case 'settings':
       return <Settings />;
-    default:
+    case 'openings':
       return <Library />;
+    case 'stings':
+      return <StingsPage tab={id} />;
+    case 'sting':
+      return <StingCard id={id} />;
+    default:
+      return <Home />;
   }
 }

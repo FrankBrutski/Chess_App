@@ -91,7 +91,7 @@ export function TrainPage({ kind, a, b }: { kind?: string; a?: string; b?: strin
   return (
     <div className="page">
       <header className="page-header">
-        <button type="button" className="icon-btn" onClick={() => navigate('/')} aria-label="Back">‹</button>
+        <button type="button" className="icon-btn" onClick={() => navigate('/openings')} aria-label="Back">‹</button>
         <h1 className="brand"><HexMark /> Train</h1>
         <button type="button" className="icon-btn" onClick={() => navigate('/settings')} aria-label="Settings">⚙</button>
       </header>

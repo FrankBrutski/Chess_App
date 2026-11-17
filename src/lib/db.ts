@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Chapter, Course, Section } from './model';
+import type { Chapter, Course, Section, Shot, Sting } from './model';
 import type { Cell } from './srs';
 import { migrateHive, LICHESS_STUDY_URL } from './hives';
 
@@ -10,6 +10,9 @@ class ChessDb extends Dexie {
   cells!: Table<Cell, string>;
   /** Honey earned per day ("2026-11-17"). */
   honey!: Table<HoneyDay, string>;
+  /** Tactics cards and their screenshots (images live in their own table so lists load fast). */
+  stings!: Table<Sting, string>;
+  shots!: Table<Shot, string>;
   constructor() {
     super('chess-app');
     this.version(1).stores({
@@ -35,6 +38,11 @@ class ChessDb extends Dexie {
       chapters: 'id, courseId, sectionId, [courseId+order]',
       cells: 'key, due',
       honey: 'day',
+    });
+    // v4: tactics (Stings).
+    this.version(4).stores({
+      stings: 'id, status, createdAt',
+      shots: 'id',
     });
   }
 }
