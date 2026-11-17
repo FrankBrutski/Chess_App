@@ -377,8 +377,3 @@ details.section:not([open]) > summary::before { content: '▸'; }
 .line-text .comment { margin: 0 0 8px !important; }
 .mv { padding: 0 2px; }
 .text-preview { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
-
-.segmented { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-.segmented button { flex: 1; border: none; border-radius: 0; background: var(--surface); min-height: 40px; }
-.segmented button + button { border-left: 1px solid var(--line); }
-.segmented button.on { background: var(--honey-deep); color: #fff; font-weight: 600; }
