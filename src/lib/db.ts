@@ -2,6 +2,7 @@ import Dexie, { type Table } from 'dexie';
 import type { Chapter, Course, Section, Shot, Sting } from './model';
 import type { Cell } from './srs';
 import { migrateHive, LICHESS_STUDY_URL } from './hives';
+import { isZip, makeZip, readZip } from './zip';
 
 class ChessDb extends Dexie {
   courses!: Table<Course, string>;
@@ -102,25 +103,68 @@ export async function deleteCourse(courseId: string) {
 
 export interface Backup {
   app: 'chess-app';
-  version: 1 | 2 | 3;
+  version: 1 | 2 | 3 | 4;
   exportedAt: string;
   courses: Course[];
   chapters: Chapter[];
   /** Training progress (version 3+). */
   cells?: Cell[];
   honey?: HoneyDay[];
+  /** Tactics cards (version 4+). Their images are separate files in the zip. */
+  stings?: Sting[];
+  shots?: { id: string; file: string; width: number; height: number }[];
 }
 
 export async function exportBackup(): Promise<Backup> {
   return {
     app: 'chess-app',
-    version: 3,
+    version: 4,
     exportedAt: new Date().toISOString(),
     courses: await db.courses.toArray(),
     chapters: await db.chapters.toArray(),
     cells: await db.cells.toArray(),
     honey: await db.honey.toArray(),
+    stings: await db.stings.toArray(),
   };
+}
+
+/** The whole app as one .zip: backup.json plus every screenshot as its own JPEG. */
+export async function exportBackupZip(): Promise<{ bytes: Uint8Array; name: string; stings: number }> {
+  const data = await exportBackup();
+  const shots = await db.shots.toArray();
+  data.shots = shots.map((s) => ({ id: s.id, file: `shots/${s.id}.jpg`, width: s.width, height: s.height }));
+  const entries = [{ name: 'backup.json', data: new TextEncoder().encode(JSON.stringify(data)) }];
+  for (const s of shots) entries.push({ name: `shots/${s.id}.jpg`, data: new Uint8Array(await s.blob.arrayBuffer()) });
+  return { bytes: makeZip(entries), name: `apiary-backup-${data.exportedAt.slice(0, 10)}.zip`, stings: data.stings?.length ?? 0 };
+}
+
+/** Restore a backup file: the .zip (with screenshots) or an older .json. */
+export async function importBackupFile(bytes: Uint8Array): Promise<{ hives: number; stings: number }> {
+  if (!isZip(bytes)) {
+    const hives = await importBackup(JSON.parse(new TextDecoder().decode(bytes)));
+    return { hives, stings: 0 };
+  }
+  const files = new Map(readZip(bytes).map((e) => [e.name, e.data]));
+  const json = files.get('backup.json');
+  if (!json) throw new Error('This zip is not an Apiary backup.');
+  const b = JSON.parse(new TextDecoder().decode(json)) as Backup;
+  const hives = await importBackup(b);
+  const STATUSES = ['inbox', 'progress', 'ready'];
+  const stings = (Array.isArray(b.stings) ? b.stings : []).filter(
+    (s) => s && typeof s.id === 'string' && STATUSES.includes(s.status) && Number.isFinite(s.createdAt),
+  );
+  const shots: Shot[] = [];
+  for (const m of Array.isArray(b.shots) ? b.shots : []) {
+    const data = m && typeof m.id === 'string' && typeof m.file === 'string' ? files.get(m.file) : undefined;
+    if (data) shots.push({ id: m.id, blob: new Blob([data], { type: 'image/jpeg' }), width: +m.width || 0, height: +m.height || 0 });
+  }
+  const have = new Set(shots.map((s) => s.id));
+  for (const s of stings) if (s.shotId && !have.has(s.shotId)) delete s.shotId;
+  await db.transaction('rw', db.stings, db.shots, async () => {
+    await db.shots.bulkPut(shots);
+    await db.stings.bulkPut(stings);
+  });
+  return { hives, stings: stings.length };
 }
 
 /** Restores a backup, replacing any course with the same id. Returns the number of courses restored. */

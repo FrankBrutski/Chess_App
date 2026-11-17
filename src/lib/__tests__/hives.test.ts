@@ -111,7 +111,7 @@ describe('importing into hives and sections', () => {
     expect(hive.sections[0].sourceUrl).toBe('https://lichess.org/study/AbCdEfGh');
     expect((await chaptersOf('c1')).every((c) => c.sectionId === hive.sections[0].id)).toBe(true);
     const round = await exportBackup();
-    expect(round.version).toBe(3);
+    expect(round.version).toBe(4);
     expect(newId()).toMatch(/\w/);
   });
 });

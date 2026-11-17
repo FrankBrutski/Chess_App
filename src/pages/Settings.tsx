@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { exportBackup, importBackup, requestPersistence } from '../lib/db';
+import { exportBackupZip, importBackupFile, requestPersistence } from '../lib/db';
 import { goBack } from '../router';
 import { appVersion, buildTime, checkForUpdate } from '../lib/update';
 import { getEngineDepth, getEngineLines, setEngineDepth, setEngineLines } from '../lib/prefs';
@@ -57,9 +57,11 @@ export function Settings() {
   };
 
   const doExport = async () => {
-    const data = await exportBackup();
-    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-    const file = new File([blob], `apiary-backup-${data.exportedAt.slice(0, 10)}.json`, { type: 'application/json' });
+    setMsg('Packing your backup…');
+    const { bytes, name, stings } = await exportBackupZip();
+    const blob = new Blob([bytes], { type: 'application/zip' });
+    const file = new File([blob], name, { type: 'application/zip' });
+    setMsg(`Backup ready: ${(blob.size / 1024 / 1024).toFixed(1)} MB${stings ? `, including ${stings} Sting${stings === 1 ? '' : 's'} and their screenshots` : ''}.`);
     if (navigator.canShare?.({ files: [file] })) {
       try {
         await navigator.share({ files: [file], title: 'Apiary backup' });
@@ -73,14 +75,14 @@ export function Settings() {
     a.href = url;
     a.download = file.name;
     a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   };
 
   const doImport = async (f: File | undefined) => {
     if (!f) return;
     try {
-      const n = await importBackup(JSON.parse(await f.text()));
-      setMsg(`Restored ${n} hive${n === 1 ? '' : 's'}.`);
+      const r = await importBackupFile(new Uint8Array(await f.arrayBuffer()));
+      setMsg(`Restored ${r.hives} hive${r.hives === 1 ? '' : 's'}${r.stings ? ` and ${r.stings} Sting${r.stings === 1 ? '' : 's'}` : ''}.`);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : 'Could not read that backup.');
     }
@@ -220,20 +222,19 @@ export function Settings() {
       <details className="set-group">
         <summary>
           <h2>Backup</h2>
-          <span className="muted small">Save or restore your hives</span>
+          <span className="muted small">Save or restore everything</span>
         </summary>
         <div className="stack">
         <p className="muted small">
-          Your hives live on this device. Save a backup to Files or iCloud Drive now and then.
+          Everything lives only on this device. Save a backup to Files or iCloud Drive now and then.
           {persisted === false && ' Storage is not yet marked as persistent; adding the app to your Home Screen fixes that.'}
         </p>
         <p className="muted small">
-          The backup covers openings and training progress. Stings (tactics cards and their screenshots) join the backup
-          in an upcoming update.
+          One .zip file with your hives, training progress, Stings and their screenshots. Older .json backups still restore.
         </p>
         <button type="button" className="primary wide" onClick={doExport}>Save a backup</button>
         <label className="file-drop compact">
-          <input type="file" accept="application/json,.json" onChange={(e) => doImport(e.target.files?.[0])} />
+          <input type="file" accept="application/zip,.zip,application/json,.json" onChange={(e) => doImport(e.target.files?.[0])} />
           <span>Restore from a backup file</span>
         </label>
         {msg && <p className="small">{msg}</p>}
