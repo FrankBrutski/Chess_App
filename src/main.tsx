@@ -3,8 +3,9 @@ import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import { App } from './App';
 import './styles.css';
-import { applyTextPrefs } from './lib/prefs';
+import { applyTextPrefs, applyTheme } from './lib/prefs';
 
+applyTheme();
 applyTextPrefs();
 
 registerSW({ immediate: true });
