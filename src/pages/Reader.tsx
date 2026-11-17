@@ -13,7 +13,8 @@ import { annotateChapter } from '../lib/annotations';
 import { Board } from '../components/Board';
 import { ChapterText, type Ghost } from '../components/ChapterText';
 import { navigate } from '../router';
-import { getLineOrder } from '../lib/prefs';
+import { getLineOrder, getShowMarkers } from '../lib/prefs';
+import { buildIndex, lookup } from '../lib/positions';
 import { getAutoLink, getBoldNotation, getEngineOn, setEngineOn } from '../lib/prefs';
 import { EnginePanel } from '../components/EnginePanel';
 import { LineText } from '../components/LineText';
@@ -44,6 +45,11 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
   const [mode, setMode] = useState<'line' | 'study'>(startNodeId ? 'study' : 'line');
   const [lineKey, setLineKey] = useState(lineId ?? 'main');
   const [drawer, setDrawer] = useState(false);
+  // Transpositions: the same position elsewhere in your repertoire.
+  const showMarkers = getShowMarkers();
+  const allHives = useLiveQuery(() => (showMarkers ? db.courses.toArray() : []), [showMarkers]);
+  const allCombs = useLiveQuery(() => (showMarkers ? db.chapters.toArray() : []), [showMarkers]);
+  const posIndex = useMemo(() => (allHives && allCombs && showMarkers ? buildIndex(allHives, allCombs, { order: getLineOrder() }) : undefined), [allHives, allCombs, showMarkers]);
   const line: Line | undefined = mode === 'line' ? lines.find((l) => l.id === lineKey) ?? lines.find((l) => l.id === 'main') ?? lines[0] : undefined;
   const lineIndex = useMemo(() => new Map(line?.nodes.map((n, i) => [n.id, i]) ?? []), [line]);
 
@@ -428,6 +434,17 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
               onOpenLine={openLine}
               boldNotation={getBoldNotation()}
               hideBranches={!!play}
+              showMarkers={showMarkers}
+              elsewhere={posIndex ? (n) =>
+                lookup(posIndex, n.fen)
+                  // A real transposition: reached there by a different last move or from a different position.
+                  // (Every comb that starts 1.e4 e5 2.Nf3 shares those moves; that's not worth a marker.)
+                  .filter((h) => !('key' in h.node) || h.node.key !== n.key)
+                  .map((h) => ({
+                    label: `${h.hive.name} › ${h.chapter.title}, line ${h.line.number}`,
+                    open: () => navigate(`/line/${h.chapter.id}/${encodeURIComponent(h.line.id)}/${h.node.id}`),
+                  }))
+              : undefined}
             />
           ) : (
           <ChapterText

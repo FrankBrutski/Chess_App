@@ -20,8 +20,12 @@ interface Props {
   onGhost: (g: Ghost) => void;
   onOpenLine: (l: Line) => void;
   boldNotation: boolean;
-  /** Hide the "other lines here" links (training keeps the screen to one line). */
+  /** Hide the "other lines here" markers (training keeps the screen to one line). */
   hideBranches?: boolean;
+  /** Show the small ⑂ / ⇄ markers (Settings → Lines). */
+  showMarkers?: boolean;
+  /** Other places in your repertoire with the position after this move (transpositions). */
+  elsewhere?: (n: MoveNode) => { label: string; open: () => void }[];
 }
 
 /**
@@ -30,7 +34,9 @@ interface Props {
  * don't repeat line after line; one tap shows them again.
  */
 function LineTextImpl(p: Props) {
-  const { line, lines, annotations, currentId, ghost, visibleUpTo, onSelect, onGhost, onOpenLine, boldNotation, hideBranches } = p;
+  const { line, lines, annotations, currentId, ghost, visibleUpTo, onSelect, onGhost, onOpenLine, boldNotation, hideBranches, elsewhere } = p;
+  const showMarkers = p.showMarkers ?? true;
+  const [open, setOpen] = useState<string>();
   const [trunkOpen, setTrunkOpen] = useState(false);
   const branches = hideBranches ? new Map<string, { move: MoveNode; line: Line }[]>() : branchesAlong(line, lines);
   const limit = visibleUpTo ?? line.nodes.length - 1;
@@ -94,21 +100,57 @@ function LineTextImpl(p: Props) {
     const n = shown[i];
     const ann = annotations.get(n.id);
     ann?.before.forEach((pc, j) => comment(pc, `b${n.id}-${j}`));
-    inline.push(moveButton(n, needNum), ' ');
+    inline.push(moveButton(n, needNum));
     needNum = false;
+    const alts = branches.get(n.id) ?? [];
+    const others = showMarkers && elsewhere ? elsewhere(n) : [];
+    const hasMark = showMarkers && (alts.length > 0 || others.length > 0);
+    if (hasMark) {
+      inline.push(
+        <button
+          key={`k${n.id}`}
+          type="button"
+          className={`mark${open === n.id ? ' on' : ''}`}
+          aria-expanded={open === n.id}
+          aria-label={`${alts.length ? `${alts.length} other move${alts.length === 1 ? '' : 's'} here` : ''}${alts.length && others.length ? ', ' : ''}${others.length ? `same position in ${others.length} other place${others.length === 1 ? '' : 's'}` : ''}`}
+          title={alts.length ? 'Other moves here' : 'Transposition: this position is elsewhere in your repertoire'}
+          onClick={() => setOpen(open === n.id ? undefined : n.id)}
+        >
+          {alts.length ? '⑂' : ''}{others.length ? '⇄' : ''}
+        </button>,
+      );
+    }
+    inline.push(' ');
     ann?.after.forEach((pc, j) => comment(pc, `a${n.id}-${j}`));
-    const alts = branches.get(n.id);
-    if (alts?.length) {
+    if (hasMark && open === n.id) {
       flush();
       blocks.push(
-        <p key={`x${n.id}`} className="branch-links">
-          <span className="muted">Instead of {fmtMove(n)}:</span>{' '}
-          {alts.map(({ move, line: l }) => (
-            <button key={move.id} type="button" className="branch-link" onClick={() => onOpenLine(l)}>
-              {fmtMove(move)} <span className="muted">line {l.number}</span>
-            </button>
-          ))}
-        </p>,
+        <div key={`x${n.id}`} className="mark-panel">
+          {alts.length > 0 && (
+            <div>
+              <span className="muted">Instead of {fmtMove(n)}: </span>
+              {alts.map(({ move, line: l }, j) => (
+                <span key={move.id}>
+                  {j > 0 && ' · '}
+                  <button type="button" className="link-btn" onClick={() => { setOpen(undefined); onOpenLine(l); }}>
+                    {fmtMove(move)} (line {l.number}{l.name !== l.label ? `, ${l.name}` : ''})
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          {others.length > 0 && (
+            <div>
+              <span className="muted">Same position: </span>
+              {others.map((o, j) => (
+                <span key={j}>
+                  {j > 0 && ' · '}
+                  <button type="button" className="link-btn" onClick={() => { setOpen(undefined); o.open(); }}>{o.label}</button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>,
       );
       needNum = true;
     }

@@ -35,6 +35,10 @@ export const setEngineLines = (n: number) => write('engineLines', String(n));
 export const getLineOrder = (): 'mainLast' | 'mainFirst' => (read('lineOrder') === 'mainFirst' ? 'mainFirst' : 'mainLast');
 export const setLineOrder = (v: 'mainLast' | 'mainFirst') => write('lineOrder', v === 'mainLast' ? null : v);
 
+/** Small markers beside moves for other lines (⑂) and transpositions (⇄). On by default. */
+export const getShowMarkers = () => read('showMarkers') !== '0';
+export const setShowMarkers = (on: boolean) => write('showMarkers', on ? null : '0');
+
 // ---------- Trainer ----------
 
 /** Review ladder in ms; editable in Settings. */

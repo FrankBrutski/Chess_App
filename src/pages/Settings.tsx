@@ -6,6 +6,7 @@ import {
   getHoneyLearn, getHoneyReview, getLadder, getMissPolicy, getRetryBack, getReviewNotes, getShowNewMoves, setHoneyLearn,
   setHoneyReview, setLadder, setMissPolicy, setRetryBack, setReviewNotes, setShowNewMoves,
 } from '../lib/prefs';
+import { getShowMarkers, setShowMarkers } from '../lib/prefs';
 import { getTheme, setTheme, type Theme } from '../lib/prefs';
 import { getLineOrder, setLineOrder, getTextPrefs, setTextPrefs, DEFAULT_TEXT, type TextPrefs } from '../lib/prefs';
 import { CHESSABLE_LADDER, DEFAULT_LADDER, formatLadder, parseLadder, type MissPolicy } from '../lib/srs';
@@ -28,6 +29,7 @@ export function Settings() {
   const [showNew, setSN] = useState(getShowNewMoves());
   const [hl, setHl] = useState(getHoneyLearn());
   const [order, setOrder] = useState(getLineOrder());
+  const [markers, setMarkers] = useState(getShowMarkers());
   const [theme, setThemeState] = useState(getTheme());
   const [text, setText] = useState(getTextPrefs());
   const changeText = (patch: Partial<TextPrefs>) => { const t = { ...text, ...patch }; setText(t); setTextPrefs(t); };
@@ -216,6 +218,10 @@ export function Settings() {
           </select>
         </label>
         <p className="muted small">Changing the order renumbers lines but keeps their names, drill choices and progress.</p>
+        <label className="toggle">
+          <input type="checkbox" checked={markers} onChange={(e) => { setMarkers(e.target.checked); setShowMarkers(e.target.checked); }} />
+          <span>Show small markers beside moves: ⑂ other moves here, ⇄ same position elsewhere (tap to see them)</span>
+        </label>
       </section>
 
       <section className="stack">
