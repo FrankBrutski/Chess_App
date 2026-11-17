@@ -65,3 +65,38 @@ export async function stingCounts(): Promise<Record<StingStatus, number>> {
   );
   return { inbox, progress, ready };
 }
+
+export const SOURCE_KINDS: { id: import('./model').SourceKind; label: string }[] = [
+  { id: 'mine', label: 'My game' },
+  { id: 'online', label: 'Online game' },
+  { id: 'otb', label: 'OTB' },
+  { id: 'video', label: 'YouTube or stream' },
+  { id: 'book', label: 'Book or course' },
+];
+export const TIME_CONTROLS = ['Bullet', 'Blitz', 'Rapid', 'Classical', 'Correspondence'];
+
+/** Save the position set up for a card. The card moves to In progress and gets an empty move tree to explore. */
+export async function savePosition(id: string, fen: string, patch: Partial<import('./model').Sting> = {}) {
+  const parts = fen.split(' ');
+  const ply = (Math.max(1, +parts[5] || 1) - 1) * 2 + (parts[1] === 'b' ? 1 : 0);
+  await db.stings.where('id').equals(id).modify((s) => {
+    const samePos = s.fen === fen && s.root;
+    Object.assign(s, patch);
+    s.fen = fen;
+    // Keep lines already explored when the position didn't change.
+    if (!samePos) s.root = { id: 'root', ply, fen, comments: [], shapes: [], children: [] };
+    if (s.status === 'inbox') s.status = 'progress';
+    s.updatedAt = Date.now();
+  });
+}
+
+/** Replace a card's screenshot with its board crop (the rest of the screenshot is not kept). */
+export async function saveCrop(id: string, img: { blob: Blob; width: number; height: number }) {
+  await db.transaction('rw', db.stings, db.shots, async () => {
+    const s = await db.stings.get(id);
+    if (!s) return;
+    const shotId = s.shotId ?? newId();
+    await db.shots.put({ id: shotId, ...img });
+    await db.stings.update(id, { shotId, cropped: true, updatedAt: Date.now() });
+  });
+}

@@ -114,6 +114,8 @@ export interface StingSource {
   black?: string;
   event?: string;
   url?: string;
+  /** Free notes, e.g. "Round 5" or the video title. */
+  note?: string;
 }
 
 export interface Sting {
@@ -123,6 +125,10 @@ export interface Sting {
   updatedAt: number;
   /** The screenshot (or, once cropped, just the board) in the `shots` table. */
   shotId?: string;
+  /** The screenshot has been cut down to just the board (the rest is not kept). */
+  cropped?: boolean;
+  /** Board shown from this side (defaults to the side to move). */
+  orientation?: 'white' | 'black';
   fen?: string;
   title?: string;
   themes?: string[];

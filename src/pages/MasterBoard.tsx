@@ -1,6 +1,6 @@
-import { createElement, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { Key, Piece } from 'chessground/types';
+import type { Key } from 'chessground/types';
 import { db } from '../lib/db';
 import { navigate } from '../router';
 import { getLineOrder } from '../lib/prefs';
@@ -10,25 +10,10 @@ import { tierName } from '../lib/hives';
 import { destsOf, sanOfBoardMove } from '../lib/boardMove';
 import { moveNumber } from '../lib/tree';
 import { Board } from '../components/Board';
-import { EditorBoard, type Tool } from '../components/EditorBoard';
+import { PositionSetup, START_FEN, setupFenOf } from '../components/PositionSetup';
 import { HexMark } from '../components/HexMark';
 
-const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-const ROLES = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn'] as const;
-
-/** Castling rights a set-up board allows (kings and rooks on their home squares). */
-function castlingFor(board: string): string {
-  const rows = board.split('/').map((r) => r.replace(/\d/g, (d) => '.'.repeat(+d)));
-  if (rows.length !== 8) return '-';
-  const w = rows[7];
-  const b = rows[0];
-  let s = '';
-  if (w[4] === 'K' && w[7] === 'R') s += 'K';
-  if (w[4] === 'K' && w[0] === 'R') s += 'Q';
-  if (b[4] === 'k' && b[7] === 'r') s += 'k';
-  if (b[4] === 'k' && b[0] === 'r') s += 'q';
-  return s || '-';
-}
+const START = START_FEN;
 
 /** Plain text of a study note: no [Line: …] marker, no angle brackets. */
 const plain = (t: string) => stripLineMarker(t).replace(/[<>]/g, '');
@@ -44,8 +29,6 @@ export function MasterBoard() {
   const [board, setBoard] = useState(START.split(' ')[0]);
   const [turn, setTurn] = useState<'w' | 'b'>('w');
   const [orientation, setOrientation] = useState<'white' | 'black'>('white');
-  const [tool, setTool] = useState<Tool>('move');
-  const [fenInput, setFenInput] = useState('');
   const [msg, setMsg] = useState<string>();
   // A game or move sequence (Play / Paste): positions and which one is shown.
   const [game, setGame] = useState<PlayedPosition[]>();
@@ -56,7 +39,7 @@ export function MasterBoard() {
 
   useEffect(() => () => { if (shot) URL.revokeObjectURL(shot); }, [shot]);
 
-  const setupFen = `${board} ${turn} ${castlingFor(board)} - 0 1`;
+  const setupFen = setupFenOf(board, turn);
   const currentFen = (mode !== 'setup' && game ? game[at]?.fen : undefined) ?? setupFen;
   const checked = useMemo(() => normalizeFen(currentFen), [currentFen]);
   const fen = 'fen' in checked ? checked.fen : undefined;
@@ -109,8 +92,6 @@ export function MasterBoard() {
     setAt(r.positions.length - 1);
   };
 
-  const palette: Tool[] = ['move', ...ROLES.map((role) => ({ role, color: 'white' as const })), ...ROLES.map((role) => ({ role, color: 'black' as const })), 'erase'];
-  const toolKey = (t: Tool) => (typeof t === 'string' ? t : `${t.color}-${t.role}`);
 
   return (
     <div className="page board-page">
@@ -153,43 +134,16 @@ export function MasterBoard() {
       </div>
 
       {mode === 'setup' && (
-        <>
-          <EditorBoard board={board} orientation={orientation} tool={tool} onChange={setBoard} />
-          <div className="palette cg-wrap" role="radiogroup" aria-label="Piece to place">
-            {palette.map((t) => (
-              <button key={toolKey(t)} type="button" role="radio" aria-checked={toolKey(tool) === toolKey(t)}
-                className={`pal${toolKey(tool) === toolKey(t) ? ' on' : ''}`}
-                aria-label={typeof t === 'string' ? (t === 'move' ? 'Move pieces' : 'Erase') : `${t.color} ${t.role}`}
-                onClick={() => setTool(t)}>
-                {typeof t === 'string' ? (t === 'move' ? '✋' : '⌫') : createElement('piece', { className: `${(t as Piece).color} ${(t as Piece).role}` })}
-              </button>
-            ))}
-          </div>
-          <div className="row editor-row">
-            <div className="segmented small-seg" role="radiogroup" aria-label="Side to move">
-              <button type="button" role="radio" aria-checked={turn === 'w'} className={turn === 'w' ? 'on' : ''} onClick={() => setTurn('w')}>White to move</button>
-              <button type="button" role="radio" aria-checked={turn === 'b'} className={turn === 'b' ? 'on' : ''} onClick={() => setTurn('b')}>Black to move</button>
-            </div>
-          </div>
-          <div className="row editor-row">
-            <button type="button" onClick={() => setBoard(START.split(' ')[0])}>Start</button>
-            <button type="button" onClick={() => setBoard('8/8/8/8/8/8/8/8')}>Clear</button>
-            <button type="button" onClick={() => setOrientation(orientation === 'white' ? 'black' : 'white')}>Flip</button>
-            <button type="button" onClick={() => fen && startPlay(fen)} disabled={!fen}>Play from here</button>
-          </div>
-          <label className="field">
-            <span>FEN</span>
-            <input
-              value={fenInput || setupFen}
-              onChange={(e) => setFenInput(e.target.value)}
-              onBlur={() => { if (fenInput) { loadFen(fenInput); setFenInput(''); } }}
-              onKeyDown={(e) => { if (e.key === 'Enter') { loadFen(fenInput || setupFen); setFenInput(''); } }}
-              spellCheck={false}
-              autoCapitalize="off"
-              aria-label="FEN"
-            />
-          </label>
-        </>
+        <PositionSetup
+          board={board}
+          turn={turn}
+          orientation={orientation}
+          onBoard={setBoard}
+          onTurn={setTurn}
+          onOrientation={setOrientation}
+          onError={setMsg}
+          extra={<button type="button" onClick={() => fen && startPlay(fen)} disabled={!fen}>Play from here</button>}
+        />
       )}
 
       {mode !== 'setup' && game && (
