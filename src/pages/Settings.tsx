@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { exportBackup, importBackup, requestPersistence } from '../lib/db';
 import { navigate } from '../router';
-import { getAutoLink, getBoldNotation, getToken, setAutoLink, setBoldNotation, setToken as storeToken } from '../lib/prefs';
+import { getAutoLink, getBoldNotation, getLichessEnabled, getToken, setAutoLink, setBoldNotation, setLichessEnabled, setToken as storeToken } from '../lib/prefs';
 
 export function Settings() {
   const [token, setToken] = useState(getToken() ?? '');
@@ -9,6 +9,7 @@ export function Settings() {
   const [msg, setMsg] = useState<string>();
   const [autoLink, setAuto] = useState(getAutoLink());
   const [bold, setBold] = useState(getBoldNotation());
+  const [lichessOn, setLichessOn] = useState(getLichessEnabled());
 
   useEffect(() => {
     void requestPersistence().then(setPersisted);
@@ -89,6 +90,14 @@ export function Settings() {
 
       <section className="stack">
         <h2>Lichess</h2>
+        <label className="toggle">
+          <input type="checkbox" checked={lichessOn} onChange={(e) => { setLichessOn(e.target.checked); setLichessEnabled(e.target.checked); }} />
+          <span>Allow downloading studies from lichess.org</span>
+        </label>
+        <p className="muted small">
+          This is the only thing the app ever connects to, and only when you tap Get study or Sync.
+          Switch it off and the app makes no network requests at all; you can still upload or paste PGN.
+        </p>
         <label className="field">
           <span>Personal token (only for private studies)</span>
           <input type="password" autoComplete="off" value={token} onChange={(e) => saveToken(e.target.value)} placeholder="lip_…" />

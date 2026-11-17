@@ -63,3 +63,11 @@ Stack: React + TypeScript + Vite, [chessops](https://github.com/niklasf/chessops
 One-time setup: repository **Settings → Pages → Source: GitHub Actions**.
 GitHub Pages on a private repository needs a paid GitHub plan; otherwise make the repository public
 (no personal data is in the code; your courses stay on your phone) or host `dist/` on Cloudflare Pages or Netlify.
+
+## Privacy and security
+
+- **No tracking.** No analytics, ads, third-party scripts, fonts or CDNs. Everything the app needs is bundled and served from the same site.
+- **One outside connection, only when you ask.** Tapping *Get study* or *Sync* downloads the study from `lichess.org` (no cookies, no referrer). Settings → *Allow downloading studies from lichess.org* switches even that off.
+- **Enforced by the browser.** The built page carries a Content Security Policy that only allows the app's own files plus `https://lichess.org`; any other request or script is blocked.
+- **No device access.** The app asks for no camera, microphone, location, contacts, photos or notifications. Your courses stay in the app's own storage on the phone. Sharing a backup only opens the iOS share sheet when you tap *Save a backup*.
+- **Works offline.** After the first visit the whole app is cached; only the Lichess download needs a connection.
