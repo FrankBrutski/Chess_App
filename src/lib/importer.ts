@@ -100,8 +100,9 @@ export async function importInto(target: ImportTarget, incoming: ParsedChapter[]
   const orderFor = new Map(plan.updated.map((u) => [u.parsed, u.existing.order]));
   const auto = getAutoLink();
   let next = existing.reduce((m, c) => Math.max(m, c.order + 1), 0);
-  const built = incoming.map((p, i) =>
-    toChapter(
+  const namesFor = new Map(plan.updated.map((u) => [u.parsed, u.existing.lineNames]));
+  const built = incoming.map((p, i) => ({
+    ...toChapter(
       p,
       hive.id,
       finalSection.id,
@@ -110,7 +111,9 @@ export async function importInto(target: ImportTarget, incoming: ParsedChapter[]
       checkChapter(p, { auto }),
       hive.color,
     ),
-  );
+    // Your line names are tied to stable line ids, so they carry over to the new version.
+    ...(namesFor.get(p) ? { lineNames: namesFor.get(p) } : {}),
+  }));
   const before = new Set(plan.updated.flatMap((u) => (u.existing.issues ?? []).map((x) => `${u.existing.id}|${x.key}`)));
   const after = new Set(built.flatMap((c) => (c.issues ?? []).map((x) => `${c.id}|${x.key}`)));
   const fixed = [...before].filter((k) => !after.has(k)).length;

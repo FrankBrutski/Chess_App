@@ -28,7 +28,7 @@ interface Props {
   boldNotation: boolean;
 }
 
-function PlainText({ text, bold }: { text: string; bold: boolean }) {
+export function PlainText({ text, bold }: { text: string; bold: boolean }) {
   if (!bold) return <>{text}</>;
   return (
     <>
@@ -37,7 +37,7 @@ function PlainText({ text, bold }: { text: string; bold: boolean }) {
   );
 }
 
-function Comment({ pieces, ghost, onGhost, bold }: { pieces: CommentPiece[]; ghost?: Ghost; onGhost: (g: Ghost) => void; bold: boolean }) {
+export function Comment({ pieces, ghost, onGhost, bold }: { pieces: CommentPiece[]; ghost?: Ghost; onGhost: (g: Ghost) => void; bold: boolean }) {
   return (
     <>
       {pieces.map((p, i) => {
