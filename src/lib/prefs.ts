@@ -19,3 +19,12 @@ export const setBoldNotation = (on: boolean) => write('boldNotation', on ? null 
 /** Allow the app to download studies from lichess.org. When off, the app makes no network requests at all. */
 export const getLichessEnabled = () => read('lichessEnabled') !== '0';
 export const setLichessEnabled = (on: boolean) => write('lichessEnabled', on ? null : '0');
+
+/** Engine analysis shown in the reader (on/off is remembered between visits). */
+export const getEngineOn = () => read('engineOn') === '1';
+export const setEngineOn = (on: boolean) => write('engineOn', on ? '1' : null);
+/** Search depth; 0 = keep thinking until the position changes. */
+export const getEngineDepth = () => Number(read('engineDepth') ?? 20);
+export const setEngineDepth = (d: number) => write('engineDepth', String(d));
+export const getEngineLines = () => Math.min(3, Math.max(1, Number(read('engineLines') ?? 2)));
+export const setEngineLines = (n: number) => write('engineLines', String(n));

@@ -9,6 +9,8 @@ export interface Ghost {
   line: GhostMove[];
   index: number;
   baseId: string;
+  /** Where the line came from, for the label above the board. */
+  source?: 'text' | 'engine';
 }
 
 interface Props {

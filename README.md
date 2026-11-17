@@ -81,4 +81,5 @@ GitHub Pages on a private repository needs a paid GitHub plan; otherwise make th
 - **One outside connection, only when you ask.** Tapping *Get study* or *Sync* downloads the study from `lichess.org` (no cookies, no referrer). Settings → *Allow downloading studies from lichess.org* switches even that off.
 - **Enforced by the browser.** The built page carries a Content Security Policy that only allows the app's own files plus `https://lichess.org`; any other request or script is blocked.
 - **No device access.** The app asks for no camera, microphone, location, contacts, photos or notifications. Your courses stay in the app's own storage on the phone. Sharing a backup only opens the iOS share sheet when you tap *Save a backup*.
+- **Engine on the phone.** The *SF* button runs Stockfish 19 (lite network, single-threaded WebAssembly from the pinned [`stockfish`](https://github.com/nmrugg/stockfish.js) npm package, GPL-3.0, licence in `engine/COPYING-stockfish.txt`). It is bundled with the app, cached for offline use, and never contacts a server.
 - **Works offline.** After the first visit the whole app is cached; only the Lichess download needs a connection.
