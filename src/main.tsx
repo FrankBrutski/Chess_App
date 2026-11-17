@@ -6,6 +6,7 @@ import './styles.css';
 import { applyTextPrefs, applyTheme } from './lib/prefs';
 
 applyTheme();
+window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', () => applyTheme());
 applyTextPrefs();
 
 registerSW({ immediate: true });
