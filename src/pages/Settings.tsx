@@ -7,6 +7,7 @@ import {
   setHoneyReview, setLadder, setMissPolicy, setRetryBack, setReviewNotes, setShowNewMoves,
 } from '../lib/prefs';
 import { getShowMarkers, setShowMarkers } from '../lib/prefs';
+import { getTheme, setTheme, type Theme } from '../lib/prefs';
 import { getLineOrder, setLineOrder, getTextPrefs, setTextPrefs, DEFAULT_TEXT, type TextPrefs } from '../lib/prefs';
 import { CHESSABLE_LADDER, DEFAULT_LADDER, formatLadder, parseLadder, type MissPolicy } from '../lib/srs';
 import { getAutoLink, getBoldNotation, getLichessEnabled, getToken, setAutoLink, setBoldNotation, setLichessEnabled, setToken as storeToken } from '../lib/prefs';
@@ -29,6 +30,7 @@ export function Settings() {
   const [hl, setHl] = useState(getHoneyLearn());
   const [order, setOrder] = useState(getLineOrder());
   const [markers, setMarkers] = useState(getShowMarkers());
+  const [theme, setThemeState] = useState(getTheme());
   const [text, setText] = useState(getTextPrefs());
   const changeText = (patch: Partial<TextPrefs>) => { const t = { ...text, ...patch }; setText(t); setTextPrefs(t); };
   const [hr, setHr] = useState(getHoneyReview());
@@ -118,6 +120,25 @@ export function Settings() {
           <input type="checkbox" checked={bold} onChange={(e) => { setBold(e.target.checked); setBoldNotation(e.target.checked); }} />
           <span>Show moves and squares in the text in bold (not clickable)</span>
         </label>
+      </section>
+
+      <section className="stack">
+        <h2>Appearance</h2>
+        <div className="segmented" role="radiogroup" aria-label="Theme">
+          {(['auto', 'light', 'dark'] as Theme[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              role="radio"
+              aria-checked={theme === t}
+              className={theme === t ? 'on' : undefined}
+              onClick={() => { setThemeState(t); setTheme(t); }}
+            >
+              {t === 'auto' ? 'Auto' : t === 'light' ? 'Light' : 'Dark'}
+            </button>
+          ))}
+        </div>
+        <p className="muted small">Auto follows your iPhone's Light/Dark setting.</p>
       </section>
 
       <section className="stack">

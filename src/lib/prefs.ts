@@ -119,3 +119,20 @@ export function applyTextPrefs(t: TextPrefs = getTextPrefs()) {
     t.font === 'serif' ? '"Iowan Old Style", "Palatino Linotype", Georgia, serif' : '-apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", sans-serif',
   );
 }
+
+// ---------- Appearance ----------
+
+export type Theme = 'auto' | 'light' | 'dark';
+export const getTheme = (): Theme => {
+  const v = read('theme');
+  return v === 'light' || v === 'dark' ? v : 'auto';
+};
+/** Auto follows the phone's Light/Dark setting; Light or Dark overrides it. */
+export function applyTheme(t: Theme = getTheme()) {
+  if (t === 'auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', t);
+}
+export function setTheme(t: Theme) {
+  write('theme', t === 'auto' ? null : t);
+  applyTheme(t);
+}
