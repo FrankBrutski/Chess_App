@@ -3,6 +3,7 @@ import { Chess } from 'chessops/chess';
 import { parseSan, makeSanAndPlay } from 'chessops/san';
 import type { Chapter, Course, MoveNode, TreeNode } from './model';
 import { splitLines, type Line, type SplitOptions } from './lines';
+import { plyOf, positionOf } from './boardMove';
 
 /** Pieces + side to move: the part of a position that has to match. Castling and en passant are compared separately. */
 export const placementKey = (fen: string) => fen.trim().split(/\s+/).slice(0, 2).join(' ');
@@ -163,12 +164,9 @@ export interface PlayedPosition {
 
 /** Play SAN moves from a start position; stops at the first move that doesn't parse. */
 export function playMoves(startFen: string, sans: string[]): { positions: PlayedPosition[]; error?: string } {
-  const setup = parseFen(startFen);
-  if (setup.isErr) return { positions: [], error: 'Bad start position.' };
-  const posRes = Chess.fromSetup(setup.value);
-  if (posRes.isErr) return { positions: [], error: 'Bad start position.' };
-  const pos = posRes.value;
-  const startPly = (pos.fullmoves - 1) * 2 + (pos.turn === 'white' ? 0 : 1);
+  const pos = positionOf(startFen);
+  if (!pos) return { positions: [], error: 'Bad start position.' };
+  const startPly = plyOf(pos);
   const positions: PlayedPosition[] = [{ fen: makeFen(pos.toSetup()), ply: startPly }];
   for (const raw of sans) {
     const move = parseSan(pos, raw);

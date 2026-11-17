@@ -1,4 +1,5 @@
-import { parseFen, makeFen } from 'chessops/fen';
+import { makeFen } from 'chessops/fen';
+import { positionOf } from './boardMove';
 import { Chess } from 'chessops/chess';
 import { parseSan, makeSanAndPlay } from 'chessops/san';
 import { makeUci } from 'chessops/util';
@@ -174,11 +175,9 @@ function tryRun(tokens: Token[], i: number, candidates: TreeNode[], forced: bool
   for (const base of candidates) {
     if (wantPly !== undefined && base.ply !== wantPly) continue;
     if (wantPly === undefined && base !== candidates[0]) break;
-    const setup = parseFen(base.fen);
-    if (setup.isErr) continue;
-    const pos = Chess.fromSetup(setup.value);
-    if (pos.isErr) continue;
-    const res = playRun(tokens, i, j, firstSan, pos.value, base.ply);
+    const pos = positionOf(base.fen);
+    if (!pos) continue;
+    const res = playRun(tokens, i, j, firstSan, pos, base.ply);
     if (!res) continue;
     if (!forced && wantPly === undefined && res.line.length < 2 && !/^[KQRBNO]/.test(firstSan)) continue;
     return { startChar, ...res, baseFen: base.fen, baseId: base.id };
@@ -305,11 +304,7 @@ interface Mark { start: number; end: number; line: GhostMove[]; index: number; d
 function parseBracketFrom(toks: BTok[], base: TreeNode): Mark[] | undefined {
   const marks: Mark[] = [];
   const posAt = (line: GhostMove[]) => {
-    const fen = line.length ? line[line.length - 1].fen : base.fen;
-    const setup = parseFen(fen);
-    if (setup.isErr) return undefined;
-    const pos = Chess.fromSetup(setup.value);
-    return pos.isErr ? undefined : pos.value;
+    return positionOf(line.length ? line[line.length - 1].fen : base.fen);
   };
   let i = 0;
   let ok = true;

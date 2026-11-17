@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { parseFen } from 'chessops/fen';
-import { Chess, normalizeMove } from 'chessops/chess';
+import { normalizeMove } from 'chessops/chess';
+import { plyOf, positionOf } from '../lib/boardMove';
 import { parseUci } from 'chessops/util';
 import { makeSanAndPlay } from 'chessops/san';
 import { makeFen } from 'chessops/fen';
@@ -20,12 +20,9 @@ interface Props {
 
 /** Convert an engine line (uci moves) into SAN moves that can be shown and played. */
 export function pvToMoves(fen: string, pv: string[], max = 12): GhostMove[] {
-  const setup = parseFen(fen);
-  if (setup.isErr) return [];
-  const p = Chess.fromSetup(setup.value);
-  if (p.isErr) return [];
-  const pos = p.value;
-  const startPly = (pos.fullmoves - 1) * 2 + (pos.turn === 'white' ? 0 : 1);
+  const pos = positionOf(fen);
+  if (!pos) return [];
+  const startPly = plyOf(pos);
   const out: GhostMove[] = [];
   for (const uci of pv.slice(0, max)) {
     const raw = parseUci(uci);

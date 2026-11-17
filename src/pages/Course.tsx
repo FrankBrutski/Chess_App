@@ -12,7 +12,16 @@ import type { Chapter, Course, Section } from '../lib/model';
 /** Only ever link out to lichess.org (a restored backup file could contain anything). */
 const isLichessUrl = (u: string) => /^https:\/\/lichess\.org\//.test(u);
 
-const chapterMoves = (c: Chapter) => c.root.children.reduce((n, m) => n + countMoves(m), 0);
+// Line and move counts per comb, worked out once per stored tree (not on every keystroke while editing).
+const statsCache = new WeakMap<Chapter['root'], { lines: number; moves: number }>();
+function combStats(c: Chapter) {
+  let s = statsCache.get(c.root);
+  if (!s) {
+    s = { lines: splitLines(c.root, c.orientation).length, moves: c.root.children.reduce((n, m) => n + countMoves(m), 0) };
+    statsCache.set(c.root, s);
+  }
+  return s;
+}
 
 export function CoursePage({ courseId }: { courseId: string }) {
   const course = useLiveQuery(() => db.courses.get(courseId), [courseId]);
@@ -127,7 +136,7 @@ export function CoursePage({ courseId }: { courseId: string }) {
                   <button type="button" className="card" onClick={() => navigate(`/read/${c.id}`)}>
                     <span className="card-title">{c.title}</span>
                     <span className="card-sub">
-                      {splitLines(c.root, c.orientation).length} lines · {chapterMoves(c)} moves
+                      {combStats(c).lines} line{combStats(c).lines === 1 ? '' : 's'} · {combStats(c).moves} moves
                       {c.issues?.length ? ` · ${c.issues.length} issue${c.issues.length === 1 ? '' : 's'}` : ''}
                       {c.skip ? ' · not drilled' : c.skipLines?.length ? ` · ${c.skipLines.length} skipped` : ''}
                     </span>
@@ -180,11 +189,8 @@ export function CoursePage({ courseId }: { courseId: string }) {
             </ol>
             <div className="section-actions">
               {combs.length > 0 && <button type="button" onClick={() => navigate(`/train/section/${course.id}/${section.id}`)}>Train section</button>}
-              {section.sourceUrl && getLichessEnabled() && (
-                <button type="button" onClick={() => navigate(`/import/${course.id}/${section.id}`)}>Sync from Lichess</button>
-              )}
               <button type="button" onClick={() => navigate(`/import/${course.id}/${section.id}`)}>
-                Upload a new version
+                {section.sourceUrl && getLichessEnabled() ? 'Sync from Lichess' : 'Upload a new version'}
               </button>
               {section.sourceUrl && isLichessUrl(section.sourceUrl) && (
                 <a className="muted small" href={section.sourceUrl} target="_blank" rel="noreferrer">Open on Lichess</a>
@@ -198,7 +204,7 @@ export function CoursePage({ courseId }: { courseId: string }) {
         <button type="button" className="wide" onClick={() => navigate(`/import/${course.id}`)}>
           Import a study into this hive
         </button>
-        {!confirming ? (
+        {!editing ? null : !confirming ? (
           <button type="button" className="danger-link" onClick={() => setConfirming(true)}>Delete hive</button>
         ) : (
           <div className="confirm">

@@ -11,8 +11,9 @@ import type { Course } from '../lib/model';
 export function Library() {
   const hives = useLiveQuery(() => db.courses.toArray(), []);
   const counts = useLiveQuery(async () => {
+    // Read only the courseId index, not every comb's move tree.
     const m = new Map<string, number>();
-    await db.chapters.each((c) => m.set(c.courseId, (m.get(c.courseId) ?? 0) + 1));
+    for (const id of (await db.chapters.orderBy('courseId').keys()) as string[]) m.set(id, (m.get(id) ?? 0) + 1);
     return m;
   }, []);
   const [reorder, setReorder] = useState(false);

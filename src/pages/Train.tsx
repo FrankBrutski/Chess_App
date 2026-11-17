@@ -21,7 +21,11 @@ export function TrainPage({ kind, a, b }: { kind?: string; a?: string; b?: strin
   const update = (s: TrainScope) => { setScopeState(s); setScope(s); };
 
   const hives = useLiveQuery(() => db.courses.toArray(), []);
-  const allChapters = useLiveQuery(() => db.chapters.toArray(), []);
+  // Only the combs of the chosen section (for the Comb picker), not every comb's tree.
+  const combs = useLiveQuery(
+    async () => (scope.section ? (await db.chapters.where('sectionId').equals(scope.section).toArray()).sort((x, y) => x.order - y.order) : []),
+    [scope.section],
+  );
   const honeyToday = useLiveQuery(async () => (await db.honey.get(today()))?.amount ?? 0, []);
   const honeyTotal = useLiveQuery(async () => (await db.honey.toArray()).reduce((n, h) => n + h.amount, 0), []);
   const [data, setData] = useState<TrainData>();
@@ -31,16 +35,15 @@ export function TrainPage({ kind, a, b }: { kind?: string; a?: string; b?: strin
 
   // A comb link fills in its hive and section.
   useEffect(() => {
-    if (!combPreset || !allChapters) return;
-    const c = allChapters.find((x) => x.id === combPreset);
-    if (c) update({ ...getScope(), hive: c.courseId, section: c.sectionId, comb: c.id });
-  }, [combPreset, allChapters]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!combPreset) return;
+    void db.chapters.get(combPreset).then((c) => c && update({ ...getScope(), hive: c.courseId, section: c.sectionId, comb: c.id }));
+  }, [combPreset]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let live = true;
     void loadTrainData(scope).then((d) => live && setData(d));
     return () => { live = false; };
-  }, [scope, reload, allChapters]);
+  }, [scope, reload]);
 
   const now = Date.now();
   const stats = useMemo(() => {
@@ -72,7 +75,16 @@ export function TrainPage({ kind, a, b }: { kind?: string; a?: string; b?: strin
 
   const hive = hives?.find((h) => h.id === scope.hive);
   const sections = hive?.sections ?? [];
-  const combs = (allChapters ?? []).filter((c) => c.sectionId === scope.section).sort((x, y) => x.order - y.order);
+  const scopeText =
+    [
+      hive?.name ?? (scope.hive === 'white' ? 'All White hives' : scope.hive === 'black' ? 'All Black hives' : 'All hives'),
+      sections.find((x) => x.id === scope.section)?.name,
+      combs?.find((c) => c.id === scope.comb)?.title,
+    ]
+      .filter(Boolean)
+      .join(' › ') +
+    (!hive && scope.mainHivesOnly ? ' · main hives' : '') +
+    (scope.mainLinesOnly ? ' · main lines' : '');
   const startLearn = () => data && setSession({ mode: 'learn', items: planLearn(data.lines, data.cells).slice(0, learnCount).map((t) => ({ t })) });
   const startReview = () => data && setSession({ mode: 'review', items: planReview(data.lines, data.cells, Date.now()) });
 
@@ -88,7 +100,11 @@ export function TrainPage({ kind, a, b }: { kind?: string; a?: string; b?: strin
         <span className="honey-pot" aria-hidden="true">🍯</span> {honeyToday ?? 0} honey today · {honeyTotal ?? 0} in all
       </p>
 
-      <div className="stack edit-box">
+      <details className="scope-box">
+        <summary>
+          <span className="muted">Training</span> <b>{scopeText}</b>
+        </summary>
+      <div className="stack">
         <label className="field">
           <span>Hive</span>
           <select value={scope.hive} onChange={(e) => update({ ...scope, hive: e.target.value, section: '', comb: '' })}>
@@ -116,7 +132,7 @@ export function TrainPage({ kind, a, b }: { kind?: string; a?: string; b?: strin
             <span>Comb</span>
             <select value={scope.comb} onChange={(e) => update({ ...scope, comb: e.target.value })}>
               <option value="">All combs</option>
-              {combs.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+              {(combs ?? []).map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
             </select>
           </label>
         )}
@@ -131,6 +147,7 @@ export function TrainPage({ kind, a, b }: { kind?: string; a?: string; b?: strin
           <span>Main line of each comb only</span>
         </label>
       </div>
+      </details>
 
       {stats && (
         <div className="train-stats">
@@ -141,20 +158,24 @@ export function TrainPage({ kind, a, b }: { kind?: string; a?: string; b?: strin
       )}
 
       <div className="stack">
-        <button type="button" className="primary wide" disabled={!stats?.due} onClick={startReview}>
-          {stats?.due ? `Review ${stats.due} due move${stats.due === 1 ? '' : 's'}` : stats?.upcoming ? `Next review ${whenText(stats.upcoming)}` : 'Nothing to review yet'}
-        </button>
-        <div className="row learn-row">
-          <button type="button" className="wide" disabled={!stats?.fresh} onClick={startLearn}>
-            {stats?.fresh ? `Learn new lines` : 'No new lines here'}
+        {!!stats?.due && (
+          <button type="button" className="primary wide" onClick={startReview}>
+            Review {stats.due} due move{stats.due === 1 ? '' : 's'}
           </button>
-          <label className="field compact">
-            <span className="sr-only">Lines per session</span>
-            <select value={learnCount} onChange={(e) => setLearnCount(+e.target.value)} aria-label="New lines per session">
-              {[1, 3, 5, 10, 20].map((n) => <option key={n} value={n}>{n} at a time</option>)}
-            </select>
-          </label>
+        )}
+        <div className="row learn-row">
+          <button type="button" className={`wide${stats?.due ? '' : ' primary'}`} disabled={!stats?.fresh} onClick={startLearn}>
+            {stats?.fresh ? 'Learn new lines' : 'No new lines here'}
+          </button>
+          <select value={learnCount} onChange={(e) => setLearnCount(+e.target.value)} aria-label="New lines per session" title="New lines per session">
+            {[1, 3, 5, 10, 20].map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
         </div>
+        {!stats?.due && (
+          <p className="muted small center">
+            {stats?.upcoming ? `Next review ${whenText(stats.upcoming)}.` : 'Nothing to review yet.'}
+          </p>
+        )}
       </div>
       <p className="muted small">
         Lines you play a second-choice move in are for reading only and aren't drilled. Change the review ladder and

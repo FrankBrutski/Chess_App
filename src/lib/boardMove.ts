@@ -5,6 +5,9 @@ import { makeSan } from 'chessops/san';
 import { chessgroundDests } from 'chessops/compat';
 import type { Key } from 'chessground/types';
 
+/** Plies played before this position (0 = White to move at move 1). */
+export const plyOf = (pos: { fullmoves: number; turn: 'white' | 'black' }) => (pos.fullmoves - 1) * 2 + (pos.turn === 'white' ? 0 : 1);
+
 export function positionOf(fen: string) {
   const setup = parseFen(fen);
   if (setup.isErr) return undefined;
