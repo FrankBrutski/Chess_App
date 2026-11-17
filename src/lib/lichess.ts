@@ -1,0 +1,39 @@
+const STUDY = /lichess\.org\/study\/([A-Za-z0-9]{8})(?:\/([A-Za-z0-9]{8}))?/;
+
+export interface StudyRef {
+  studyId: string;
+  chapterId?: string;
+}
+
+export function parseStudyUrl(input: string): StudyRef | undefined {
+  const trimmed = input.trim();
+  const m = STUDY.exec(trimmed);
+  if (m) return { studyId: m[1], chapterId: m[2] };
+  if (/^[A-Za-z0-9]{8}$/.test(trimmed)) return { studyId: trimmed };
+  return undefined;
+}
+
+export const studyUrl = (ref: StudyRef) =>
+  `https://lichess.org/study/${ref.studyId}${ref.chapterId ? `/${ref.chapterId}` : ''}`;
+
+/**
+ * Download a study (or one chapter) as PGN from the Lichess API.
+ * Public and unlisted studies need no token; private ones need a token with study:read.
+ */
+export async function fetchStudyPgn(ref: StudyRef, token?: string): Promise<string> {
+  const path = ref.chapterId ? `${ref.studyId}/${ref.chapterId}` : ref.studyId;
+  const url = `https://lichess.org/api/study/${path}.pgn?comments=true&variations=true&clocks=false&orientation=true`;
+  let res: Response;
+  try {
+    res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+  } catch {
+    throw new Error('Could not reach Lichess. Check your connection, or download the PGN and upload the file instead.');
+  }
+  if (res.status === 404 || res.status === 403 || res.status === 401) {
+    throw new Error(
+      'Lichess would not share this study. If it is private, add a Lichess token in Settings, or make it unlisted.',
+    );
+  }
+  if (!res.ok) throw new Error(`Lichess returned an error (${res.status}). Try again in a minute.`);
+  return res.text();
+}
