@@ -129,6 +129,9 @@ export const getTheme = (): Theme => {
 export function applyTheme(t: Theme = getTheme()) {
   if (t === 'auto') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme', t);
+  // Match the browser/status-bar tint to the page so there is no coloured haze at the top.
+  const dark = t === 'dark' || (t === 'auto' && window.matchMedia?.('(prefers-color-scheme: dark)').matches);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#17120b' : '#f5efe1');
 }
 export function setTheme(t: Theme) {
   write('theme', t === 'auto' ? null : t);
