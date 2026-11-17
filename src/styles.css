@@ -321,3 +321,22 @@ details.section:not([open]) > summary::before { content: '▸'; }
   border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 2px 10px; min-height: 0;
   font-size: 14px; color: var(--var); font-weight: 600;
 }
+
+/* ---------- trainer ---------- */
+.train-cta { margin-bottom: 14px; }
+.honey-line { text-align: center; margin: -6px 0 12px; color: var(--honey-deep); font-weight: 600; }
+.check { display: flex; gap: 10px; align-items: center; font-size: 15px; }
+.check input { width: 20px; height: 20px; }
+.train-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }
+.train-stats div { display: flex; flex-direction: column; align-items: center; padding: 10px 6px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); text-align: center; }
+.train-stats b { font-size: 24px; color: var(--honey-deep); }
+.train-stats span { font-size: 12px; color: var(--muted); }
+.learn-row { align-items: stretch; }
+.learn-row .wide { flex: 2; }
+.learn-row .field.compact { flex: 1; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.session-summary { text-align: center; color: var(--muted); font-size: 14px; margin: 12px 0; }
+.train .reader-title .reader-course { color: var(--honey-deep); }
+.drill-btn { min-height: 0; padding: 4px 10px; font-size: 13px; border-radius: 999px; border: 1px solid var(--honey-deep); color: var(--honey-deep); background: transparent; font-weight: 600; }
+.drill-btn.off { border-color: var(--line); color: var(--muted); text-decoration: line-through; }
+.section-tools .check { font-size: 13px; gap: 4px; }

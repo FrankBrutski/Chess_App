@@ -54,7 +54,7 @@ export function CoursePage({ courseId }: { courseId: string }) {
         <button type="button" className="icon-btn small-text" onClick={() => setEditing(!editing)}>{editing ? 'Done' : 'Edit'}</button>
       </header>
       <p className="muted small hive-sub">
-        {course.color === 'white' ? 'White' : 'Black'} · {tierName(course.tier)} · {chapters?.length ?? 0} combs
+        {course.color === 'white' ? 'White' : 'Black'} · {tierName(course.tier)} · {chapters?.length ?? 0} combs{course.skip ? ' · not drilled' : ''}
       </p>
 
       {editing && (
@@ -85,9 +85,15 @@ export function CoursePage({ courseId }: { courseId: string }) {
               </select>
             </label>
           </div>
+          <label className="check">
+            <input type="checkbox" checked={!course.skip} onChange={(e) => update({ skip: !e.target.checked })} />
+            <span>Drill this hive in training</span>
+          </label>
           <button type="button" className="wide" onClick={addSection}>Add a section</button>
         </div>
       )}
+
+      <button type="button" className="primary wide" onClick={() => navigate(`/train/hive/${course.id}`)}>Train this hive</button>
 
       {issueCount > 0 && (
         <button type="button" className="wide issues-link" onClick={() => navigate(`/issues/${course.id}`)}>
@@ -101,13 +107,17 @@ export function CoursePage({ courseId }: { courseId: string }) {
           <details key={section.id} className="section" open>
             <summary>
               <span className="section-name">{section.name}</span>
-              <span className="muted small">{combs.length} combs</span>
+              <span className="muted small">{combs.length} combs{section.skip ? ' · not drilled' : ''}</span>
             </summary>
             {editing && (
               <div className="section-tools">
                 <input aria-label="Section name" value={section.name} onChange={(e) => renameSection(section.id, e.target.value)} />
                 <button type="button" onClick={() => moveSection(si, -1)} disabled={si === 0} aria-label="Move section up">▲</button>
                 <button type="button" onClick={() => moveSection(si, 1)} disabled={si === course.sections.length - 1} aria-label="Move section down">▼</button>
+                <label className="check" title="Drill this section in training">
+                  <input type="checkbox" checked={!section.skip} onChange={(e) => setSections(course.sections.map((s) => (s.id === section.id ? { ...s, skip: !e.target.checked } : s)))} />
+                  <span>Drill</span>
+                </label>
                 {combs.length === 0 && <button type="button" className="danger-link" onClick={() => deleteSection(section.id)}>Remove</button>}
               </div>
             )}
@@ -119,6 +129,7 @@ export function CoursePage({ courseId }: { courseId: string }) {
                     <span className="card-sub">
                       {splitLines(c.root, c.orientation).length} lines · {chapterMoves(c)} moves
                       {c.issues?.length ? ` · ${c.issues.length} issue${c.issues.length === 1 ? '' : 's'}` : ''}
+                      {c.skip ? ' · not drilled' : c.skipLines?.length ? ` · ${c.skipLines.length} skipped` : ''}
                     </span>
                   </button>
                   {editing && (
@@ -126,6 +137,15 @@ export function CoursePage({ courseId }: { courseId: string }) {
                       <button type="button" onClick={() => moveCombWithin(combs, ci, -1)} disabled={ci === 0} aria-label="Move comb up">▲</button>
                       <button type="button" onClick={() => moveCombWithin(combs, ci, 1)} disabled={ci === combs.length - 1} aria-label="Move comb down">▼</button>
                       <button type="button" onClick={() => setMoving(moving === c.id ? undefined : c.id)}>Move…</button>
+                      <button
+                        type="button"
+                        className={`drill-btn${c.skip ? ' off' : ''}`}
+                        aria-pressed={!c.skip}
+                        onClick={() => db.chapters.where('id').equals(c.id).modify((x) => { x.skip = !x.skip; })}
+                        title="Drill this comb in training"
+                      >
+                        {c.skip ? 'Skip' : 'Drill'}
+                      </button>
                     </div>
                   )}
                   {editing && moving === c.id && (
@@ -159,6 +179,7 @@ export function CoursePage({ courseId }: { courseId: string }) {
               ))}
             </ol>
             <div className="section-actions">
+              {combs.length > 0 && <button type="button" onClick={() => navigate(`/train/section/${course.id}/${section.id}`)}>Train section</button>}
               {section.sourceUrl && getLichessEnabled() && (
                 <button type="button" onClick={() => navigate(`/import/${course.id}/${section.id}`)}>Sync from Lichess</button>
               )}
@@ -174,7 +195,7 @@ export function CoursePage({ courseId }: { courseId: string }) {
       })}
 
       <div className="stack">
-        <button type="button" className="primary wide" onClick={() => navigate(`/import/${course.id}`)}>
+        <button type="button" className="wide" onClick={() => navigate(`/import/${course.id}`)}>
           Import a study into this hive
         </button>
         {!confirming ? (

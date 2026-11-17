@@ -1,10 +1,15 @@
 import Dexie, { type Table } from 'dexie';
 import type { Chapter, Course, Section } from './model';
+import type { Cell } from './srs';
 import { migrateHive, LICHESS_STUDY_URL } from './hives';
 
 class ChessDb extends Dexie {
   courses!: Table<Course, string>;
   chapters!: Table<Chapter, string>;
+  /** Training progress per move you play (see lib/srs.ts). */
+  cells!: Table<Cell, string>;
+  /** Honey earned per day ("2026-11-17"). */
+  honey!: Table<HoneyDay, string>;
   constructor() {
     super('chess-app');
     this.version(1).stores({
@@ -24,7 +29,19 @@ class ChessDb extends Dexie {
         await tx.table('courses').bulkPut(courses);
         await tx.table('chapters').bulkPut(chapters);
       });
+    // v3: the opening trainer.
+    this.version(3).stores({
+      courses: 'id, name, updatedAt',
+      chapters: 'id, courseId, sectionId, [courseId+order]',
+      cells: 'key, due',
+      honey: 'day',
+    });
   }
+}
+
+export interface HoneyDay {
+  day: string;
+  amount: number;
 }
 
 export const db = new ChessDb();
@@ -54,6 +71,18 @@ export async function chaptersOfSection(sectionId: string): Promise<Chapter[]> {
   return list.sort((a, b) => a.order - b.order);
 }
 
+export const today = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+export async function addHoney(amount: number) {
+  if (amount <= 0) return;
+  const day = today();
+  await db.transaction('rw', db.honey, async () => {
+    const cur = await db.honey.get(day);
+    await db.honey.put({ day, amount: (cur?.amount ?? 0) + amount });
+  });
+}
+
 export async function deleteCourse(courseId: string) {
   await db.transaction('rw', db.courses, db.chapters, async () => {
     await db.chapters.where('courseId').equals(courseId).delete();
@@ -65,19 +94,24 @@ export async function deleteCourse(courseId: string) {
 
 export interface Backup {
   app: 'chess-app';
-  version: 1 | 2;
+  version: 1 | 2 | 3;
   exportedAt: string;
   courses: Course[];
   chapters: Chapter[];
+  /** Training progress (version 3+). */
+  cells?: Cell[];
+  honey?: HoneyDay[];
 }
 
 export async function exportBackup(): Promise<Backup> {
   return {
     app: 'chess-app',
-    version: 2,
+    version: 3,
     exportedAt: new Date().toISOString(),
     courses: await db.courses.toArray(),
     chapters: await db.chapters.toArray(),
+    cells: await db.cells.toArray(),
+    honey: await db.honey.toArray(),
   };
 }
 
@@ -100,10 +134,17 @@ export async function importBackup(data: unknown): Promise<number> {
   }
   // Backups made before hives had sections are upgraded on the way in.
   b.courses.forEach((c, i) => migrateHive(c, b.chapters, i, newId));
-  await db.transaction('rw', db.courses, db.chapters, async () => {
+  const cells = (Array.isArray(b.cells) ? b.cells : []).filter(
+    (c) => c && typeof c.key === 'string' && Number.isFinite(c.level) && Number.isFinite(c.due),
+  );
+  const honey = (Array.isArray(b.honey) ? b.honey : []).filter((h) => h && typeof h.day === 'string' && Number.isFinite(h.amount));
+  await db.transaction('rw', [db.courses, db.chapters, db.cells, db.honey], async () => {
     for (const c of b.courses) await db.chapters.where('courseId').equals(c.id).delete();
     await db.courses.bulkPut(b.courses);
     await db.chapters.bulkPut(b.chapters);
+    // Progress in the backup wins for the moves it covers; other progress on this phone is kept.
+    await db.cells.bulkPut(cells);
+    await db.honey.bulkPut(honey);
   });
   return b.courses.length;
 }

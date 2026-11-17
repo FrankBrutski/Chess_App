@@ -13,6 +13,7 @@ import { annotateChapter } from '../lib/annotations';
 import { Board } from '../components/Board';
 import { ChapterText, type Ghost } from '../components/ChapterText';
 import { navigate } from '../router';
+import { getLineOrder } from '../lib/prefs';
 import { getAutoLink, getBoldNotation, getEngineOn, setEngineOn } from '../lib/prefs';
 import { EnginePanel } from '../components/EnginePanel';
 import { LineText } from '../components/LineText';
@@ -38,12 +39,12 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
   const order = useMemo(() => (chapter ? docOrder(chapter.root) : []), [chapter]);
   const orderIndex = useMemo(() => new Map(order.map((id, i) => [id, i])), [order]);
   const annotations = useMemo(() => (chapter ? annotateChapter(chapter.root, { auto: getAutoLink() }) : new Map()), [chapter]);
-  const lines = useMemo(() => (chapter ? splitLines(chapter.root, chapter.orientation, chapter.lineNames) : []), [chapter]);
+  const lines = useMemo(() => (chapter ? splitLines(chapter.root, chapter.orientation, { names: chapter.lineNames, order: getLineOrder() }) : []), [chapter]);
   // Line view (one line at a time, Chessable style) is the default; "Whole study" shows the full tree.
   const [mode, setMode] = useState<'line' | 'study'>(startNodeId ? 'study' : 'line');
   const [lineKey, setLineKey] = useState(lineId ?? 'main');
   const [drawer, setDrawer] = useState(false);
-  const line: Line | undefined = mode === 'line' ? lines.find((l) => l.id === lineKey) ?? lines[0] : undefined;
+  const line: Line | undefined = mode === 'line' ? lines.find((l) => l.id === lineKey) ?? lines.find((l) => l.id === 'main') ?? lines[0] : undefined;
   const lineIndex = useMemo(() => new Map(line?.nodes.map((n, i) => [n.id, i]) ?? []), [line]);
 
   const [currentId, setCurrentId] = useState('root');
@@ -273,6 +274,7 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
           <div className="reader-course">{course?.name}</div>
           <div className="reader-chapter">{chapter.title}</div>
         </div>
+        <button type="button" className="icon-btn small-text" onClick={() => navigate(`/train/comb/${chapter.id}`)} title="Train this comb">Train</button>
         <button
           type="button"
           className={`engine-toggle${engineOn ? ' on' : ''}`}
@@ -324,7 +326,24 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
           {line ? 'Whole' : 'Lines'}
         </button>
       </div>
-      {drawer && <LineList lines={lines} current={line} onOpen={openLine} onRename={renameLine} onClose={() => setDrawer(false)} />}
+      {drawer && (
+        <LineList
+          lines={lines}
+          current={line}
+          skipped={new Set(chapter.skipLines ?? [])}
+          onOpen={openLine}
+          onRename={renameLine}
+          onToggleDrill={(l) =>
+            db.chapters.where('id').equals(chapter.id).modify((c) => {
+              const s = new Set(c.skipLines ?? []);
+              if (s.has(l.id)) s.delete(l.id);
+              else s.add(l.id);
+              c.skipLines = [...s];
+            })
+          }
+          onClose={() => setDrawer(false)}
+        />
+      )}
 
       <div className="reader-body">
         <div className="board-pane">
@@ -449,11 +468,13 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
   );
 }
 
-function LineList({ lines, current, onOpen, onRename, onClose }: {
+function LineList({ lines, current, skipped, onOpen, onRename, onToggleDrill, onClose }: {
   lines: Line[];
   current?: Line;
+  skipped: Set<string>;
   onOpen: (l: Line) => void;
   onRename: (l: Line, name: string) => void;
+  onToggleDrill: (l: Line) => void;
   onClose: () => void;
 }) {
   const [q, setQ] = useState('');
@@ -502,8 +523,21 @@ function LineList({ lines, current, onOpen, onRename, onClose }: {
                     <span className="line-name">{l.name}</span>
                     {l.name !== l.label && <span className="muted small"> · {l.label}</span>}
                     {!l.trainable && <span className="tag">reading only</span>}
+                    {l.trainable && skipped.has(l.id) && <span className="tag">not drilled</span>}
                   </span>
                 </button>
+                {l.trainable && (
+                  <button
+                    type="button"
+                    className={`drill-btn${skipped.has(l.id) ? ' off' : ''}`}
+                    onClick={() => onToggleDrill(l)}
+                    aria-pressed={!skipped.has(l.id)}
+                    aria-label={`Drill line ${l.number}`}
+                    title={skipped.has(l.id) ? 'Not drilled: tap to drill this line' : 'Drilled: tap to stop drilling this line'}
+                  >
+                    {skipped.has(l.id) ? 'Skip' : 'Drill'}
+                  </button>
+                )}
                 <button type="button" className="icon-btn small-text" onClick={() => setEditing(l.id)} aria-label={`Rename line ${l.number}`}>✎</button>
               </>
             )}
@@ -511,7 +545,10 @@ function LineList({ lines, current, onOpen, onRename, onClose }: {
         ))}
         {shown.length === 0 && <li className="muted small">No line matches.</li>}
       </ol>
-      <p className="muted small">Name a line by tapping ✎, or in Lichess by writing [Line: name] in the comment on the move where it branches.</p>
+      <p className="muted small">
+        Name a line by tapping ✎, or in Lichess by writing [Line: name] in the comment on the move where it branches.
+        Tap Drill to switch a line between drilled and not drilled; skipped lines stay here to read and keep their progress.
+      </p>
     </div>
   );
 }

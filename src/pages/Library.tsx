@@ -3,6 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../lib/db';
 import { navigate } from '../router';
 import { HexMark } from '../components/HexMark';
+import { loadTrainData } from '../lib/training';
+import { userKeys } from '../lib/srs';
 import { groupHives, moveInList, tierName } from '../lib/hives';
 import type { Course } from '../lib/model';
 
@@ -14,6 +16,12 @@ export function Library() {
     return m;
   }, []);
   const [reorder, setReorder] = useState(false);
+  // Due moves in lines you drill (skipped lines, combs, sections and hives don't count).
+  const due = useLiveQuery(async () => {
+    const d = await loadTrainData({ hive: '', section: '', comb: '', mainHivesOnly: false, mainLinesOnly: false });
+    const now = Date.now();
+    return new Set(d.lines.flatMap(userKeys).filter((k) => (d.cells.get(k)?.due ?? Infinity) <= now)).size;
+  }, []);
 
   const move = async (list: Course[], i: number, dir: -1 | 1) => {
     const next = moveInList(list, i, dir);
@@ -34,6 +42,11 @@ export function Library() {
         )}
         <button type="button" className="icon-btn" onClick={() => navigate('/settings')} aria-label="Settings">⚙</button>
       </header>
+      {(hives?.length ?? 0) > 0 && (
+        <button type="button" className="primary wide train-cta" onClick={() => navigate('/train')}>
+          Train{due ? ` · ${due} due` : ''}
+        </button>
+      )}
       {hives?.length === 0 && (
         <div className="empty">
           <p>No hives yet.</p>
@@ -72,7 +85,7 @@ export function Library() {
           ))}
         </section>
       ))}
-      <button type="button" className="primary wide" onClick={() => navigate('/import')}>
+      <button type="button" className="wide" onClick={() => navigate('/import')}>
         Import a study
       </button>
     </div>

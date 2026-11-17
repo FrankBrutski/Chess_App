@@ -100,7 +100,7 @@ export async function importInto(target: ImportTarget, incoming: ParsedChapter[]
   const orderFor = new Map(plan.updated.map((u) => [u.parsed, u.existing.order]));
   const auto = getAutoLink();
   let next = existing.reduce((m, c) => Math.max(m, c.order + 1), 0);
-  const namesFor = new Map(plan.updated.map((u) => [u.parsed, u.existing.lineNames]));
+  const keepFor = new Map(plan.updated.map((u) => [u.parsed, u.existing]));
   const built = incoming.map((p, i) => ({
     ...toChapter(
       p,
@@ -111,8 +111,8 @@ export async function importInto(target: ImportTarget, incoming: ParsedChapter[]
       checkChapter(p, { auto }),
       hive.color,
     ),
-    // Your line names are tied to stable line ids, so they carry over to the new version.
-    ...(namesFor.get(p) ? { lineNames: namesFor.get(p) } : {}),
+    // Your line names and drill choices are tied to stable line ids, so they carry over to the new version.
+    ...keepSettings(keepFor.get(p)),
   }));
   const before = new Set(plan.updated.flatMap((u) => (u.existing.issues ?? []).map((x) => `${u.existing.id}|${x.key}`)));
   const after = new Set(built.flatMap((c) => (c.issues ?? []).map((x) => `${c.id}|${x.key}`)));
@@ -123,6 +123,15 @@ export async function importInto(target: ImportTarget, incoming: ParsedChapter[]
     await db.courses.update(hive.id, { sections: nextSections, updatedAt: Date.now() });
   });
   return { ...plan, fixed, open: after.size, sectionId: finalSection.id };
+}
+
+function keepSettings(old: Chapter | undefined): Partial<Chapter> {
+  if (!old) return {};
+  const out: Partial<Chapter> = {};
+  if (old.lineNames) out.lineNames = old.lineNames;
+  if (old.skipLines?.length) out.skipLines = old.skipLines;
+  if (old.skip) out.skip = true;
+  return out;
 }
 
 /** Move a comb to another section or hive. Its id is kept, so its progress comes with it. */
