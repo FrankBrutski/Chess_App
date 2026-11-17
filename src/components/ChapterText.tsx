@@ -37,11 +37,25 @@ export function PlainText({ text, bold }: { text: string; bold: boolean }) {
   );
 }
 
+/** Plain text with the study's own breaks: one newline = line break, a blank line = paragraph gap. */
+export function BrokenText({ text, bold }: { text: string; bold: boolean }) {
+  if (!text.includes('\n')) return <PlainText text={text} bold={bold} />;
+  const out: ReactNode[] = [];
+  text.split(/\n[ \t]*\n\s*/).forEach((para, i) => {
+    if (i) out.push(<span key={`g${i}`} className="para-gap" aria-hidden="true" />);
+    para.split('\n').forEach((ln, j) => {
+      if (j) out.push(<br key={`b${i}-${j}`} />);
+      out.push(<PlainText key={`t${i}-${j}`} text={ln} bold={bold} />);
+    });
+  });
+  return <>{out}</>;
+}
+
 export function Comment({ pieces, ghost, onGhost, bold }: { pieces: CommentPiece[]; ghost?: Ghost; onGhost: (g: Ghost) => void; bold: boolean }) {
   return (
     <>
       {pieces.map((p, i) => {
-        if (p.kind === 'text') return <PlainText key={i} text={p.text} bold={bold} />;
+        if (p.kind === 'text') return <BrokenText key={i} text={p.text} bold={bold} />;
         if (p.kind === 'bad') {
           return (
             <span key={i} className="inline-bad" title="These moves are not legal from here">

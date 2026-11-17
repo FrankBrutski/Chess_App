@@ -93,8 +93,9 @@ export interface TextPrefs {
   leading: number; // line height
   tight: boolean; // slightly tighter letter spacing
   font: 'system' | 'serif';
+  paraGap: number; // em of space for a blank line in a study comment
 }
-export const DEFAULT_TEXT: TextPrefs = { size: 16, weight: 400, moveWeight: 600, leading: 1.4, tight: true, font: 'system' };
+export const DEFAULT_TEXT: TextPrefs = { size: 16, weight: 400, moveWeight: 600, leading: 1.4, tight: true, font: 'system', paraGap: 0.6 };
 export function getTextPrefs(): TextPrefs {
   try { return { ...DEFAULT_TEXT, ...(JSON.parse(read('textPrefs') ?? '{}') as Partial<TextPrefs>) }; } catch { return DEFAULT_TEXT; }
 }
@@ -109,6 +110,7 @@ export function applyTextPrefs(t: TextPrefs = getTextPrefs()) {
   r.setProperty('--read-weight', String(t.weight));
   r.setProperty('--move-weight', String(t.moveWeight));
   r.setProperty('--read-leading', String(t.leading));
+  r.setProperty('--para-gap', `${t.paraGap}em`);
   r.setProperty('--read-tracking', t.tight ? '-0.01em' : '0');
   r.setProperty(
     '--read-font',
