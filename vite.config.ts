@@ -2,6 +2,13 @@
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { execSync } from 'node:child_process';
+
+// Shown in Settings → About, so you can tell which build the phone is running.
+const commit = (() => {
+  if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA.slice(0, 7);
+  try { return execSync('git rev-parse --short HEAD').toString().trim(); } catch { return 'dev'; }
+})();
 
 // Content Security Policy for the built app: it may only load its own files and
 // talk to lichess.org (study downloads). Anything else is blocked by the browser.
@@ -29,11 +36,12 @@ const cspPlugin = (): Plugin => ({
 // Relative base so the same build works at https://<user>.github.io/<repo>/ or any other host.
 export default defineConfig({
   base: './',
+  define: { __APP_VERSION__: JSON.stringify(commit), __BUILD_TIME__: JSON.stringify(new Date().toISOString()) },
   plugins: [
     react(),
     cspPlugin(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt', // a new version waits for you to tap Reload (never mid-drill)
       includeAssets: ['apple-touch-icon.png', 'favicon.svg'],
       manifest: {
         name: 'Apiary',

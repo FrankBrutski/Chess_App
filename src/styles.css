@@ -426,3 +426,12 @@ details.section:not([open]) > summary::before { content: '▸'; }
 .set-group[open] > summary::after { transform: rotate(90deg); }
 .set-group > summary .muted { flex: 1; text-align: right; }
 .set-group > .stack { padding-bottom: 16px; }
+
+/* New version ready */
+.update-banner {
+  position: fixed; left: 12px; right: 12px; bottom: calc(12px + var(--safe-bottom)); z-index: 1001;
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px;
+  background: var(--surface); border: 1px solid var(--honey-deep); box-shadow: 0 4px 16px rgba(0,0,0,.18);
+  max-width: 616px; margin: 0 auto;
+}
+.update-banner span { flex: 1; font-size: 14px; }

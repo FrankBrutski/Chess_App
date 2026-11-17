@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { exportBackup, importBackup, requestPersistence } from '../lib/db';
 import { navigate } from '../router';
+import { appVersion, buildTime, checkForUpdate } from '../lib/update';
 import { getEngineDepth, getEngineLines, setEngineDepth, setEngineLines } from '../lib/prefs';
 import {
   getHoneyLearn, getHoneyReview, getLadder, getMissPolicy, getRetryBack, getReviewNotes, getShowNewMoves, setHoneyLearn,
@@ -32,6 +33,7 @@ export function Settings() {
   const [markers, setMarkers] = useState(getShowMarkers());
   const [theme, setThemeState] = useState(getTheme());
   const [text, setText] = useState(getTextPrefs());
+  const [updateMsg, setUpdateMsg] = useState<string>();
   const changeText = (patch: Partial<TextPrefs>) => { const t = { ...text, ...patch }; setText(t); setTextPrefs(t); };
   const [hr, setHr] = useState(getHoneyReview());
   const saveLadder = (text: string) => {
@@ -351,6 +353,30 @@ export function Settings() {
           <span>Restore from a backup file</span>
         </label>
         {msg && <p className="small">{msg}</p>}
+        </div>
+      </details>
+      <details className="set-group">
+        <summary>
+          <h2>About</h2>
+          <span className="muted small">Version {appVersion}</span>
+        </summary>
+        <div className="stack">
+          <p className="small">
+            Apiary version <b>{appVersion}</b>
+            {buildTime && <span className="muted"> · built {new Date(buildTime).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</span>}
+          </p>
+          <button
+            type="button"
+            className="wide"
+            disabled={updateMsg === 'Checking…'}
+            onClick={async () => {
+              setUpdateMsg('Checking…');
+              setUpdateMsg((await checkForUpdate()) ? 'A new version is ready: tap Reload at the bottom.' : 'You have the latest version.');
+            }}
+          >
+            Check for updates
+          </button>
+          {updateMsg && <p className="muted small">{updateMsg}</p>}
         </div>
       </details>
     </div>

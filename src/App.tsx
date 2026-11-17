@@ -4,6 +4,7 @@ import { Library } from './pages/Library';
 import { CoursePage } from './pages/Course';
 import { Reader } from './pages/Reader';
 import { requestPersistence } from './lib/db';
+import { UpdateBanner } from './components/UpdateBanner';
 
 // Screens you open less often load on first use (all files are still bundled and cached offline).
 const ImportPage = lazy(() => import('./pages/Import').then((m) => ({ default: m.ImportPage })));
@@ -17,7 +18,12 @@ export function App() {
   useEffect(() => {
     void requestPersistence();
   }, []);
-  return <Suspense fallback={<div className="page" />}>{route(page, id, sub, sub2)}</Suspense>;
+  return (
+    <>
+      <Suspense fallback={<div className="page" />}>{route(page, id, sub, sub2)}</Suspense>
+      <UpdateBanner />
+    </>
+  );
 }
 
 function route(page: string | undefined, id: string, sub: string, sub2: string) {
