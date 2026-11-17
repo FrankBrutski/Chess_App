@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { parseFen } from 'chessops/fen';
-import { Chess } from 'chessops/chess';
-import { chessgroundDests } from 'chessops/compat';
-import { parseSquare } from 'chessops/util';
-import { makeSan } from 'chessops/san';
 import type { Key } from 'chessground/types';
 import { db, chaptersOf } from '../lib/db';
 import type { MoveNode, Shape, TreeNode } from '../lib/model';
@@ -13,21 +8,12 @@ import { annotateChapter } from '../lib/annotations';
 import { Board } from '../components/Board';
 import { ChapterText, type Ghost } from '../components/ChapterText';
 import { navigate } from '../router';
-import { getLineOrder, getShowMarkers } from '../lib/prefs';
 import { buildIndex, lookup } from '../lib/positions';
-import { getAutoLink, getBoldNotation, getEngineOn, setEngineOn } from '../lib/prefs';
+import { getAutoLink, getBoldNotation, getEngineOn, getLineOrder, getShowMarkers, setEngineOn } from '../lib/prefs';
+import { destsOf, sanOfBoardMove, stripSan } from '../lib/boardMove';
 import { EnginePanel } from '../components/EnginePanel';
 import { LineText } from '../components/LineText';
-import { splitLines, type Line } from '../lib/lines';
-
-const strip = (san: string) => san.replace(/[+#!?]/g, '');
-
-function positionOf(fen: string) {
-  const setup = parseFen(fen);
-  if (setup.isErr) return undefined;
-  const pos = Chess.fromSetup(setup.value);
-  return pos.isErr ? undefined : pos.value;
-}
+import { lineThrough, splitLines, type Line } from '../lib/lines';
 
 type Feedback = { kind: 'good' | 'bad' | 'info' | 'done'; text: string } | undefined;
 
@@ -188,35 +174,24 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
   const awaitingUser =
     !!play && !viewing && !!expected && (isWhiteMove(expected.ply) ? 'white' : 'black') === userColor;
 
-  const movable = useMemo(() => {
-    if (!awaitingUser || !frontierNode) return undefined;
-    const pos = positionOf(frontierNode.fen);
-    if (!pos) return undefined;
-    return { color: userColor, dests: chessgroundDests(pos) as Map<Key, Key[]> };
-  }, [awaitingUser, frontierNode, userColor]);
+  const movable = useMemo(
+    () => (awaitingUser && frontierNode ? { color: userColor, dests: destsOf(frontierNode.fen) } : undefined),
+    [awaitingUser, frontierNode, userColor],
+  );
 
   const onUserMove = useCallback(
     (orig: Key, dest: Key) => {
       if (!frontierNode || !expected) return;
-      const pos = positionOf(frontierNode.fen);
-      const from = parseSquare(orig);
-      let to = parseSquare(dest);
-      if (pos === undefined || from === undefined || to === undefined) return;
-      // chessground reports castling as king-to-destination; chessops wants king-to-rook.
-      const piece = pos.board.get(from);
-      if (piece?.role === 'king' && Math.abs(from - to) === 2) to = to > from ? to + 1 : to - 2;
-      const promo = /=([QRBN])/.exec(expected.san)?.[1];
-      const role = promo ? ({ Q: 'queen', R: 'rook', B: 'bishop', N: 'knight' } as const)[promo as 'Q'] : undefined;
-      const isPromo = piece?.role === 'pawn' && (dest[1] === '8' || dest[1] === '1');
-      const san = makeSan(pos, { from, to, promotion: isPromo ? role ?? 'queen' : undefined });
-      if (strip(san) === strip(expected.san)) {
+      const san = sanOfBoardMove(frontierNode.fen, orig, dest, expected.san);
+      if (!san) return;
+      if (stripSan(san) === stripSan(expected.san)) {
         setHint([]);
         setFeedback({ kind: 'good', text: `${moveNumber(expected.ply)}${expected.san} ✓` });
         setPlay({ frontier: expected.id });
         setCurrentId(expected.id);
         return;
       }
-      const alt = frontierNode.children.find((c) => strip(c.san) === strip(san));
+      const alt = frontierNode.children.find((c) => stripSan(c.san) === stripSan(san));
       const altLine = alt && line ? lines.find((l) => l !== line && l.nodes.includes(alt)) : undefined;
       setFeedback({
         kind: 'bad',
@@ -290,22 +265,32 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
         >
           SF
         </button>
-        <div className="reader-chapnav">
-          <button type="button" className="icon-btn" disabled={!prevCh} onClick={() => prevCh && navigate(`/read/${prevCh.id}`)} aria-label="Previous comb (chapter)" title="Previous comb">⟨</button>
-          <button type="button" className="icon-btn" disabled={!nextCh} onClick={() => nextCh && navigate(`/read/${nextCh.id}`)} aria-label="Next comb (chapter)" title="Next comb">⟩</button>
-        </div>
       </header>
 
       <div className="line-bar">
         {line ? (
           <>
-            <button type="button" className="icon-btn" disabled={lineNo <= 0} onClick={() => openLine(lines[lineNo - 1])} aria-label="Previous line">‹</button>
+            <button
+              type="button"
+              className="icon-btn"
+              disabled={lineNo <= 0 && !prevCh}
+              onClick={() => (lineNo > 0 ? openLine(lines[lineNo - 1]) : prevCh && navigate(`/read/${prevCh.id}`))}
+              aria-label={lineNo > 0 ? 'Previous line' : 'Previous comb'}
+              title={lineNo > 0 ? 'Previous line' : prevCh ? `Previous comb: ${prevCh.title}` : undefined}
+            >‹</button>
             <button type="button" className="line-pick" onClick={() => setDrawer(!drawer)} aria-expanded={drawer}>
               <span className="line-num">Line {line.number}/{lines.length}</span>
               <span className="line-name">{line.name}</span>
               <span aria-hidden="true">▾</span>
             </button>
-            <button type="button" className="icon-btn" disabled={lineNo >= lines.length - 1} onClick={() => openLine(lines[lineNo + 1])} aria-label="Next line">›</button>
+            <button
+              type="button"
+              className="icon-btn"
+              disabled={lineNo >= lines.length - 1 && !nextCh}
+              onClick={() => (lineNo < lines.length - 1 ? openLine(lines[lineNo + 1]) : nextCh && navigate(`/read/${nextCh.id}`))}
+              aria-label={lineNo < lines.length - 1 ? 'Next line' : 'Next comb'}
+              title={lineNo < lines.length - 1 ? 'Next line' : nextCh ? `Next comb: ${nextCh.title}` : undefined}
+            >›</button>
           </>
         ) : (
           <button type="button" className="line-pick" onClick={() => setDrawer(!drawer)} aria-expanded={drawer}>
@@ -323,7 +308,7 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
             if (line) setMode('study');
             else {
               setMode('line');
-              const through = lines.find((l) => l.nodes.some((n) => n.id === currentId));
+              const through = lineThrough(lines, currentId);
               if (through) setLineKey(through.id);
             }
           }}
@@ -474,6 +459,9 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
               </button>
               {line && lineNo < lines.length - 1 && (
                 <button type="button" className="primary" onClick={() => openLine(lines[lineNo + 1])}>Next line</button>
+              )}
+              {line && lineNo === lines.length - 1 && nextCh && (
+                <button type="button" className="primary" onClick={() => navigate(`/read/${nextCh.id}`)}>Next comb</button>
               )}
               <button type="button" onClick={stopPlay}>Back to reading</button>
             </div>

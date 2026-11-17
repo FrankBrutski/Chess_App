@@ -92,38 +92,12 @@ export function Settings() {
         <span />
       </header>
 
-      <section className="stack">
-        <h2>Backup</h2>
-        <p className="muted small">
-          Your hives live on this device. Save a backup to Files or iCloud Drive now and then.
-          {persisted === false && ' Storage is not yet marked as persistent; adding the app to your Home Screen fixes that.'}
-        </p>
-        <button type="button" className="primary wide" onClick={doExport}>Save a backup</button>
-        <label className="file-drop compact">
-          <input type="file" accept="application/json,.json" onChange={(e) => doImport(e.target.files?.[0])} />
-          <span>Restore from a backup file</span>
-        </label>
-        {msg && <p className="small">{msg}</p>}
-      </section>
-
-      <section className="stack">
-        <h2>Moves in your text</h2>
-        <p className="muted small">
-          Lines you wrap in angle brackets in a Lichess comment, like &lt;12...Bf6 13.Bxf6 Nxf5&gt;, become clickable.
-          The brackets are hidden, and a bracketed line with an illegal move is underlined in red.
-        </p>
-        <label className="toggle">
-          <input type="checkbox" checked={autoLink} onChange={(e) => { setAuto(e.target.checked); setAutoLink(e.target.checked); }} />
-          <span>Also make unbracketed moves clickable when they are legal</span>
-        </label>
-        <label className="toggle">
-          <input type="checkbox" checked={bold} onChange={(e) => { setBold(e.target.checked); setBoldNotation(e.target.checked); }} />
-          <span>Show moves and squares in the text in bold (not clickable)</span>
-        </label>
-      </section>
-
-      <section className="stack">
-        <h2>Appearance</h2>
+      <details className="set-group">
+        <summary>
+          <h2>Appearance</h2>
+          <span className="muted small">Light, Dark or Auto</span>
+        </summary>
+        <div className="stack">
         <div className="segmented" role="radiogroup" aria-label="Theme">
           {(['auto', 'light', 'dark'] as Theme[]).map((t) => (
             <button
@@ -139,10 +113,14 @@ export function Settings() {
           ))}
         </div>
         <p className="muted small">Auto follows your iPhone's Light/Dark setting.</p>
-      </section>
-
-      <section className="stack">
-        <h2>Text</h2>
+        </div>
+      </details>
+      <details className="set-group">
+        <summary>
+          <h2>Text</h2>
+          <span className="muted small">Size, weight, spacing, font</span>
+        </summary>
+        <div className="stack">
         <div className="text-preview chapter-text" aria-label="Preview">
           <p className="line-main">
             <span className="mv mv-main"><span className="mv-num">12…</span>Nf6</span>{' '}
@@ -206,10 +184,34 @@ export function Settings() {
           <span>Tighter letter spacing</span>
         </label>
         <button type="button" className="link-btn" onClick={() => changeText(DEFAULT_TEXT)}>Reset text settings</button>
-      </section>
-
-      <section className="stack">
-        <h2>Lines</h2>
+        </div>
+      </details>
+      <details className="set-group">
+        <summary>
+          <h2>Moves in your text</h2>
+          <span className="muted small">Clickable and bold moves</span>
+        </summary>
+        <div className="stack">
+        <p className="muted small">
+          Lines you wrap in angle brackets in a Lichess comment, like &lt;12...Bf6 13.Bxf6 Nxf5&gt;, become clickable.
+          The brackets are hidden, and a bracketed line with an illegal move is underlined in red.
+        </p>
+        <label className="toggle">
+          <input type="checkbox" checked={autoLink} onChange={(e) => { setAuto(e.target.checked); setAutoLink(e.target.checked); }} />
+          <span>Also make unbracketed moves clickable when they are legal</span>
+        </label>
+        <label className="toggle">
+          <input type="checkbox" checked={bold} onChange={(e) => { setBold(e.target.checked); setBoldNotation(e.target.checked); }} />
+          <span>Show moves and squares in the text in bold (not clickable)</span>
+        </label>
+        </div>
+      </details>
+      <details className="set-group">
+        <summary>
+          <h2>Lines</h2>
+          <span className="muted small">Line order and markers</span>
+        </summary>
+        <div className="stack">
         <label className="field">
           <span>Order of lines in a comb</span>
           <select value={order} onChange={(e) => { const v = e.target.value as 'mainLast' | 'mainFirst'; setOrder(v); setLineOrder(v); }}>
@@ -222,10 +224,14 @@ export function Settings() {
           <input type="checkbox" checked={markers} onChange={(e) => { setMarkers(e.target.checked); setShowMarkers(e.target.checked); }} />
           <span>Show small markers beside moves: ⑂ other moves here, ⇄ same position elsewhere (tap to see them)</span>
         </label>
-      </section>
-
-      <section className="stack">
-        <h2>Training</h2>
+        </div>
+      </details>
+      <details className="set-group">
+        <summary>
+          <h2>Training</h2>
+          <span className="muted small">Review ladder, misses, honey</span>
+        </summary>
+        <div className="stack">
         <p className="muted small">
           Each of your moves climbs one step of the review ladder when you get it right. Steps use m, h, d, w, mo or y.
         </p>
@@ -278,10 +284,14 @@ export function Settings() {
             </select>
           </label>
         </div>
-      </section>
-
-      <section className="stack">
-        <h2>Engine</h2>
+        </div>
+      </details>
+      <details className="set-group">
+        <summary>
+          <h2>Engine</h2>
+          <span className="muted small">Stockfish depth and lines</span>
+        </summary>
+        <div className="stack">
         <p className="muted small">
           Tap <strong>SF</strong> in the reader to see Stockfish's evaluation. Stockfish 19 (lite network) runs on this
           phone, works offline and sends nothing anywhere. It stops when it reaches the depth below, when you switch it
@@ -302,10 +312,14 @@ export function Settings() {
             </select>
           </label>
         </div>
-      </section>
-
-      <section className="stack">
-        <h2>Lichess</h2>
+        </div>
+      </details>
+      <details className="set-group">
+        <summary>
+          <h2>Lichess</h2>
+          <span className="muted small">Study downloads and token</span>
+        </summary>
+        <div className="stack">
         <label className="toggle">
           <input type="checkbox" checked={lichessOn} onChange={(e) => { setLichessOn(e.target.checked); setLichessEnabled(e.target.checked); }} />
           <span>Allow downloading studies from lichess.org</span>
@@ -319,7 +333,26 @@ export function Settings() {
           <input type="password" autoComplete="off" value={token} onChange={(e) => saveToken(e.target.value)} placeholder="lip_…" />
         </label>
         <p className="muted small">Unlisted and public studies don't need this.</p>
-      </section>
+        </div>
+      </details>
+      <details className="set-group">
+        <summary>
+          <h2>Backup</h2>
+          <span className="muted small">Save or restore your hives</span>
+        </summary>
+        <div className="stack">
+        <p className="muted small">
+          Your hives live on this device. Save a backup to Files or iCloud Drive now and then.
+          {persisted === false && ' Storage is not yet marked as persistent; adding the app to your Home Screen fixes that.'}
+        </p>
+        <button type="button" className="primary wide" onClick={doExport}>Save a backup</button>
+        <label className="file-drop compact">
+          <input type="file" accept="application/json,.json" onChange={(e) => doImport(e.target.files?.[0])} />
+          <span>Restore from a backup file</span>
+        </label>
+        {msg && <p className="small">{msg}</p>}
+        </div>
+      </details>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { parseSan } from 'chessops/san';
 import { makeFen } from 'chessops/fen';
 import { makeUci, makeSquare } from 'chessops/util';
 import type { Position } from 'chessops/chess';
+import { plyOf } from './boardMove';
 import type { Chapter, Issue, MoveNode, RootNode, Shape } from './model';
 
 export interface ParsedChapter {
@@ -93,7 +94,7 @@ export function convertGame(game: Game<PgnNodeData>, index: number): ParsedChapt
   const posResult = startingPosition(h);
   if (posResult.isErr) throw new Error(`Chapter ${index + 1}: invalid starting position (FEN header).`);
   const pos = posResult.value;
-  const startPly = (pos.fullmoves - 1) * 2 + (pos.turn === 'white' ? 0 : 1);
+  const startPly = plyOf(pos);
   const rootComments = splitComments(game.comments);
   const ids = { n: 1 };
   const root: RootNode = {

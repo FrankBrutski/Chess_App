@@ -1,20 +1,26 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { useRoute } from './router';
 import { Library } from './pages/Library';
 import { CoursePage } from './pages/Course';
-import { ImportPage } from './pages/Import';
 import { Reader } from './pages/Reader';
-import { Settings } from './pages/Settings';
-import { TrainPage } from './pages/Train';
-import { MasterBoard } from './pages/MasterBoard';
-import { IssuesPage } from './pages/Issues';
 import { requestPersistence } from './lib/db';
+
+// Screens you open less often load on first use (all files are still bundled and cached offline).
+const ImportPage = lazy(() => import('./pages/Import').then((m) => ({ default: m.ImportPage })));
+const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
+const TrainPage = lazy(() => import('./pages/Train').then((m) => ({ default: m.TrainPage })));
+const MasterBoard = lazy(() => import('./pages/MasterBoard').then((m) => ({ default: m.MasterBoard })));
+const IssuesPage = lazy(() => import('./pages/Issues').then((m) => ({ default: m.IssuesPage })));
 
 export function App() {
   const [page, id, sub, sub2] = useRoute();
   useEffect(() => {
     void requestPersistence();
   }, []);
+  return <Suspense fallback={<div className="page" />}>{route(page, id, sub, sub2)}</Suspense>;
+}
+
+function route(page: string | undefined, id: string, sub: string, sub2: string) {
   switch (page) {
     case 'course':
       return <CoursePage courseId={id} />;

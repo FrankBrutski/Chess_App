@@ -156,8 +156,6 @@ h2 { font-size: 17px; margin: 8px 0 0; }
 .reader-title { flex: 1; min-width: 0; text-align: center; }
 .reader-course { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .reader-chapter { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.reader-chapnav { display: flex; }
-.reader-chapnav .icon-btn { font-size: 20px; }
 .reader-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .board-pane { flex: none; padding: 8px 8px 0; display: flex; flex-direction: column; gap: 6px; align-items: center; }
 .board-wrap { width: min(100%, 47vh, 560px); }
@@ -353,11 +351,6 @@ details.section:not([open]) > summary::before { content: '▸'; }
 .trunk-label { font-size: 13px; }
 .trunk-fold { display: block; margin: 0 0 8px; }
 .link-btn.small { font-size: 13px; }
-.branch-links { font-size: 14px; display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; margin: -4px 0 10px !important; }
-.branch-link {
-  border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 2px 10px; min-height: 0;
-  font-size: 14px; color: var(--var); font-weight: 600;
-}
 
 /* ---------- trainer ---------- */
 .train-cta { margin-bottom: 14px; }
@@ -370,7 +363,12 @@ details.section:not([open]) > summary::before { content: '▸'; }
 .train-stats span { font-size: 12px; color: var(--muted); }
 .learn-row { align-items: stretch; }
 .learn-row .wide { flex: 2; }
-.learn-row .field.compact { flex: 1; }
+.learn-row select { flex: 0 0 76px; width: 76px; }
+.scope-box { padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.scope-box summary { cursor: pointer; list-style-position: inside; }
+.scope-box[open] summary { margin-bottom: 10px; }
+.scope-box .stack { margin-bottom: 0; }
+.center { text-align: center; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .session-summary { text-align: center; color: var(--muted); font-size: 14px; margin: 12px 0; }
 .train .reader-title .reader-course { color: var(--honey-deep); }
@@ -418,3 +416,13 @@ details.section:not([open]) > summary::before { content: '▸'; }
 .mark.on { color: var(--var); opacity: 1; }
 .mark-panel { font-size: 14px; margin: 0 0 8px; padding: 6px 10px; border-left: 2px solid var(--var); background: var(--var-bg); border-radius: 0 8px 8px 0; display: flex; flex-direction: column; gap: 2px; }
 .mark-panel .link-btn { font-size: 14px; padding: 0; min-height: 0; }
+
+/* Settings: one tap opens a group, so the page is a short list instead of a long scroll. */
+.set-group { border-bottom: 1px solid var(--line); }
+.set-group > summary { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 14px 0; cursor: pointer; list-style: none; }
+.set-group > summary::-webkit-details-marker { display: none; }
+.set-group > summary h2 { margin: 0; }
+.set-group > summary::after { content: '›'; color: var(--muted); font-size: 20px; transition: transform .15s; }
+.set-group[open] > summary::after { transform: rotate(90deg); }
+.set-group > summary .muted { flex: 1; text-align: right; }
+.set-group > .stack { padding-bottom: 16px; }

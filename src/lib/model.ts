@@ -97,4 +97,3 @@ export interface Course {
   updatedAt: number;
 }
 
-export const isMove = (n: TreeNode): n is MoveNode => n.id !== 'root';
