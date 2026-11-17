@@ -1,6 +1,15 @@
-# Chess Repertoire
+# Apiary
 
 A personal opening repertoire reader and trainer, built as an installable web app (PWA) for iPhone.
+
+| In the app | Means |
+| --- | --- |
+| Hive | A course (one Lichess study) |
+| Comb | A chapter |
+| Cell | A position you train (phase 2) |
+| Forage | Play along to learn new lines |
+| Swarm | A review session (phase 2) |
+| Honey | Points for correct moves (phase 2) |
 
 Phase 1 (this version): import Lichess studies, read them as a book with a board, and play along.
 

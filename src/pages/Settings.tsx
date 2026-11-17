@@ -23,10 +23,10 @@ export function Settings() {
   const doExport = async () => {
     const data = await exportBackup();
     const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-    const file = new File([blob], `chess-app-backup-${data.exportedAt.slice(0, 10)}.json`, { type: 'application/json' });
+    const file = new File([blob], `apiary-backup-${data.exportedAt.slice(0, 10)}.json`, { type: 'application/json' });
     if (navigator.canShare?.({ files: [file] })) {
       try {
-        await navigator.share({ files: [file], title: 'Chess App backup' });
+        await navigator.share({ files: [file], title: 'Apiary backup' });
         return;
       } catch {
         /* cancelled: fall through to download */
@@ -44,7 +44,7 @@ export function Settings() {
     if (!f) return;
     try {
       const n = await importBackup(JSON.parse(await f.text()));
-      setMsg(`Restored ${n} courses.`);
+      setMsg(`Restored ${n} hive${n === 1 ? '' : 's'}.`);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : 'Could not read that backup.');
     }
@@ -61,7 +61,7 @@ export function Settings() {
       <section className="stack">
         <h2>Backup</h2>
         <p className="muted small">
-          Your courses live on this device. Save a backup to Files or iCloud Drive now and then.
+          Your hives live on this device. Save a backup to Files or iCloud Drive now and then.
           {persisted === false && ' Storage is not yet marked as persistent; adding the app to your Home Screen fixes that.'}
         </p>
         <button type="button" className="primary wide" onClick={doExport}>Save a backup</button>

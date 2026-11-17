@@ -121,7 +121,7 @@ export function Reader({ chapterId, startNodeId }: { chapterId: string; startNod
     setGhost(undefined);
     setHint([]);
     setPlay({ frontier: currentId });
-    setFeedback({ kind: 'info', text: 'Play along: make your moves on the board. The text follows you.' });
+    setFeedback({ kind: 'info', text: 'Forage: play your moves on the board. The text follows you.' });
   };
   const stopPlay = () => {
     setPlay(undefined);
@@ -202,7 +202,7 @@ export function Reader({ chapterId, startNodeId }: { chapterId: string; startNod
   };
 
   if (chapter === undefined || !idx || !node) return <div className="page"><p className="muted">Loading…</p></div>;
-  if (chapter === null) return <div className="page"><p>Chapter not found.</p></div>;
+  if (chapter === null) return <div className="page"><p>Comb not found.</p></div>;
 
   const boardFen = ghost ? ghost.line[ghost.index].fen : node.fen;
   const lastMove = ghost ? ghost.line[ghost.index].uci : (node as MoveNode).uci;
@@ -216,7 +216,7 @@ export function Reader({ chapterId, startNodeId }: { chapterId: string; startNod
   return (
     <div className="reader">
       <header className="reader-header">
-        <button type="button" className="icon-btn" onClick={() => navigate(`/course/${chapter.courseId}`)} aria-label="Back to course">
+        <button type="button" className="icon-btn" onClick={() => navigate(`/course/${chapter.courseId}`)} aria-label="Back to hive" title="Back to hive">
           ‹
         </button>
         <div className="reader-title">
@@ -224,8 +224,8 @@ export function Reader({ chapterId, startNodeId }: { chapterId: string; startNod
           <div className="reader-chapter">{chapter.title}</div>
         </div>
         <div className="reader-chapnav">
-          <button type="button" className="icon-btn" disabled={!prevCh} onClick={() => prevCh && navigate(`/read/${prevCh.id}`)} aria-label="Previous chapter">⟨</button>
-          <button type="button" className="icon-btn" disabled={!nextCh} onClick={() => nextCh && navigate(`/read/${nextCh.id}`)} aria-label="Next chapter">⟩</button>
+          <button type="button" className="icon-btn" disabled={!prevCh} onClick={() => prevCh && navigate(`/read/${prevCh.id}`)} aria-label="Previous comb (chapter)" title="Previous comb">⟨</button>
+          <button type="button" className="icon-btn" disabled={!nextCh} onClick={() => nextCh && navigate(`/read/${nextCh.id}`)} aria-label="Next comb (chapter)" title="Next comb">⟩</button>
         </div>
       </header>
 
@@ -273,8 +273,8 @@ export function Reader({ chapterId, startNodeId }: { chapterId: string; startNod
                 <button type="button" className="primary" onClick={stopPlay}>Stop</button>
               </>
             ) : (
-              <button type="button" className="primary" onClick={startPlay} disabled={!node.children.length}>
-                Play along
+              <button type="button" className="primary" onClick={startPlay} disabled={!node.children.length} title="Forage: play along and learn this line">
+                Forage
               </button>
             )}
           </div>
@@ -312,7 +312,7 @@ export function Reader({ chapterId, startNodeId }: { chapterId: string; startNod
           {play && feedback?.kind === 'done' && (
             <div className="done-actions">
               <button type="button" onClick={() => { select('root'); setPlay({ frontier: 'root' }); setFeedback(undefined); }}>
-                Restart chapter
+                Restart comb
               </button>
               <button type="button" onClick={stopPlay}>Back to reading</button>
             </div>

@@ -19,7 +19,7 @@ export function CoursePage({ courseId }: { courseId: string }) {
   const issueCount = chapters?.reduce((n, c) => n + (c.issues?.length ?? 0), 0) ?? 0;
 
   if (course === undefined) return <div className="page"><p className="muted">Loading…</p></div>;
-  if (course === null) return <div className="page"><p>Course not found.</p></div>;
+  if (course === null) return <div className="page"><p>Hive not found.</p></div>;
 
   return (
     <div className="page">
@@ -28,7 +28,10 @@ export function CoursePage({ courseId }: { courseId: string }) {
         <h1>{course.name}</h1>
         <span />
       </header>
-      <ol className="card-list chapters">
+      <p className="muted small hive-sub">
+        Hive · {chapters?.length ?? 0} combs <span className="muted">(a comb is one chapter of the study)</span>
+      </p>
+      <ol className="card-list chapters" aria-label="Combs (chapters)">
         {chapters?.map((c) => (
           <li key={c.id}>
             <button type="button" className="card" onClick={() => navigate(`/read/${c.id}`)}>
@@ -63,7 +66,7 @@ export function CoursePage({ courseId }: { courseId: string }) {
           </a>
         )}
         {!confirming ? (
-          <button type="button" className="danger-link" onClick={() => setConfirming(true)}>Delete course</button>
+          <button type="button" className="danger-link" onClick={() => setConfirming(true)}>Delete hive</button>
         ) : (
           <div className="confirm">
             <span>Delete “{course.name}” from this device?</span>
