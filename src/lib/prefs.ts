@@ -83,3 +83,35 @@ export const getScope = (): TrainScope => {
   try { return { ...base, ...(JSON.parse(read('trainScope') ?? '{}') as Partial<TrainScope>) }; } catch { return base; }
 };
 export const setScope = (s: TrainScope) => write('trainScope', JSON.stringify(s));
+
+// ---------- Reading text ----------
+
+export interface TextPrefs {
+  size: number; // px
+  weight: number; // notes: 300 light, 400 regular, 500 medium
+  moveWeight: number; // moves: 500, 600, 700
+  leading: number; // line height
+  tight: boolean; // slightly tighter letter spacing
+  font: 'system' | 'serif';
+}
+export const DEFAULT_TEXT: TextPrefs = { size: 16, weight: 400, moveWeight: 600, leading: 1.4, tight: true, font: 'system' };
+export function getTextPrefs(): TextPrefs {
+  try { return { ...DEFAULT_TEXT, ...(JSON.parse(read('textPrefs') ?? '{}') as Partial<TextPrefs>) }; } catch { return DEFAULT_TEXT; }
+}
+export function setTextPrefs(t: TextPrefs) {
+  write('textPrefs', JSON.stringify(t));
+  applyTextPrefs(t);
+}
+/** Push the reading-text settings into CSS variables (system fonts only; nothing is downloaded). */
+export function applyTextPrefs(t: TextPrefs = getTextPrefs()) {
+  const r = document.documentElement.style;
+  r.setProperty('--read-size', `${t.size}px`);
+  r.setProperty('--read-weight', String(t.weight));
+  r.setProperty('--move-weight', String(t.moveWeight));
+  r.setProperty('--read-leading', String(t.leading));
+  r.setProperty('--read-tracking', t.tight ? '-0.01em' : '0');
+  r.setProperty(
+    '--read-font',
+    t.font === 'serif' ? '"Iowan Old Style", "Palatino Linotype", Georgia, serif' : '-apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", sans-serif',
+  );
+}

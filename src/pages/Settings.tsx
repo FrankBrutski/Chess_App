@@ -6,7 +6,7 @@ import {
   getHoneyLearn, getHoneyReview, getLadder, getMissPolicy, getRetryBack, getReviewNotes, getShowNewMoves, setHoneyLearn,
   setHoneyReview, setLadder, setMissPolicy, setRetryBack, setReviewNotes, setShowNewMoves,
 } from '../lib/prefs';
-import { getLineOrder, setLineOrder } from '../lib/prefs';
+import { getLineOrder, setLineOrder, getTextPrefs, setTextPrefs, DEFAULT_TEXT, type TextPrefs } from '../lib/prefs';
 import { CHESSABLE_LADDER, DEFAULT_LADDER, formatLadder, parseLadder, type MissPolicy } from '../lib/srs';
 import { getAutoLink, getBoldNotation, getLichessEnabled, getToken, setAutoLink, setBoldNotation, setLichessEnabled, setToken as storeToken } from '../lib/prefs';
 
@@ -27,6 +27,8 @@ export function Settings() {
   const [showNew, setSN] = useState(getShowNewMoves());
   const [hl, setHl] = useState(getHoneyLearn());
   const [order, setOrder] = useState(getLineOrder());
+  const [text, setText] = useState(getTextPrefs());
+  const changeText = (patch: Partial<TextPrefs>) => { const t = { ...text, ...patch }; setText(t); setTextPrefs(t); };
   const [hr, setHr] = useState(getHoneyReview());
   const saveLadder = (text: string) => {
     setLadderText(text);
@@ -114,6 +116,64 @@ export function Settings() {
           <input type="checkbox" checked={bold} onChange={(e) => { setBold(e.target.checked); setBoldNotation(e.target.checked); }} />
           <span>Show moves and squares in the text in bold (not clickable)</span>
         </label>
+      </section>
+
+      <section className="stack">
+        <h2>Text</h2>
+        <div className="text-preview chapter-text" aria-label="Preview">
+          <p className="line-main">
+            <span className="mv mv-main"><span className="mv-num">12…</span>Nf6</span>{' '}
+            <span className="mv mv-main"><span className="mv-num">13.</span>Bxf6</span>
+          </p>
+          <p className="comment">
+            And we can consider 12...Nf6? but better is <span className="inline-move">12…Bf6 13.Bxf6 Nxf5</span>, when the
+            e5 square is ours.
+          </p>
+        </div>
+        <label className="field">
+          <span>Size: {text.size}px</span>
+          <input type="range" min={13} max={22} step={1} value={text.size} onChange={(e) => changeText({ size: +e.target.value })} />
+        </label>
+        <div className="row">
+          <label className="field">
+            <span>Notes</span>
+            <select value={text.weight} onChange={(e) => changeText({ weight: +e.target.value })}>
+              <option value={300}>Light</option>
+              <option value={400}>Regular</option>
+              <option value={500}>Medium</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Moves</span>
+            <select value={text.moveWeight} onChange={(e) => changeText({ moveWeight: +e.target.value })}>
+              <option value={500}>Medium</option>
+              <option value={600}>Semibold</option>
+              <option value={700}>Bold</option>
+            </select>
+          </label>
+        </div>
+        <div className="row">
+          <label className="field">
+            <span>Line spacing</span>
+            <select value={text.leading} onChange={(e) => changeText({ leading: +e.target.value })}>
+              <option value={1.25}>Compact</option>
+              <option value={1.4}>Normal</option>
+              <option value={1.6}>Roomy</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Font</span>
+            <select value={text.font} onChange={(e) => changeText({ font: e.target.value as TextPrefs['font'] })}>
+              <option value="system">System</option>
+              <option value="serif">Serif</option>
+            </select>
+          </label>
+        </div>
+        <label className="toggle">
+          <input type="checkbox" checked={text.tight} onChange={(e) => changeText({ tight: e.target.checked })} />
+          <span>Tighter letter spacing</span>
+        </label>
+        <button type="button" className="link-btn" onClick={() => changeText(DEFAULT_TEXT)}>Reset text settings</button>
       </section>
 
       <section className="stack">
