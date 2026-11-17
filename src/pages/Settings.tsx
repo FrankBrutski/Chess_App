@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { exportBackupZip, importBackupFile, requestPersistence } from '../lib/db';
 import { goBack } from '../router';
+import { getStingEngineCheck, getStingHoney, getStingNew, setStingEngineCheck, setStingHoney, setStingNew } from '../lib/prefs';
 import { appVersion, buildTime, checkForUpdate } from '../lib/update';
 import { getEngineDepth, getEngineLines, setEngineDepth, setEngineLines } from '../lib/prefs';
 import {
@@ -34,6 +35,9 @@ export function Settings() {
   const [theme, setThemeState] = useState(getTheme());
   const [text, setText] = useState(getTextPrefs());
   const [updateMsg, setUpdateMsg] = useState<string>();
+  const [stingHoney, setStingHoneyState] = useState(getStingHoney);
+  const [stingNew, setStingNewState] = useState(getStingNew);
+  const [stingCheck, setStingCheckState] = useState(getStingEngineCheck);
   const changeText = (patch: Partial<TextPrefs>) => { const t = { ...text, ...patch }; setText(t); setTextPrefs(t); };
   const [hr, setHr] = useState(getHoneyReview());
   const saveLadder = (text: string) => {
@@ -384,6 +388,39 @@ export function Settings() {
           <input type="password" autoComplete="off" value={token} onChange={(e) => saveToken(e.target.value)} placeholder="lip_…" />
         </label>
         <p className="muted small">Unlisted and public studies don't need this.</p>
+        </div>
+      </details>
+      <h3 className="set-head">Tactics</h3>
+      <details className="set-group">
+        <summary>
+          <h2>Drill</h2>
+          <span className="muted small">Honey, new cards, Stockfish check</span>
+        </summary>
+        <div className="stack">
+          <p className="muted small">
+            A Ready card is solved by its Best line or an Also wins line. Also wins earns full Honey when Stockfish rates it
+            above +4.00 and within 2.00 of the Best line, otherwise half. A winning move you didn't write down (above
+            +4.00) earns half. A miss or a hint earns none and brings the card back sooner, on the same review ladder as
+            openings.
+          </p>
+          <div className="row">
+            <label className="field">
+              <span>Honey per solve</span>
+              <select value={stingHoney} onChange={(e) => { setStingHoneyState(+e.target.value); setStingHoney(+e.target.value); }}>
+                {[1, 2, 3, 4, 5, 6, 8, 10].map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
+            <label className="field">
+              <span>New cards per drill</span>
+              <select value={stingNew} onChange={(e) => { setStingNewState(+e.target.value); setStingNew(+e.target.value); }}>
+                {[3, 5, 10, 15, 20, 30].map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
+          </div>
+          <label className="check">
+            <input type="checkbox" checked={stingCheck} onChange={(e) => { setStingCheckState(e.target.checked); setStingEngineCheck(e.target.checked); }} />
+            <span>Check moves that aren't in my notes with Stockfish (a few seconds, on this phone)</span>
+          </label>
         </div>
       </details>
     </div>

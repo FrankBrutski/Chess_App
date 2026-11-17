@@ -503,3 +503,8 @@ div.shot-full { aspect-ratio: 3 / 4; }
 .tag-box { padding: 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); gap: 8px; margin: 0; }
 .note-input { font-family: var(--read-font); font-size: 15px; }
 .ready-box { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+
+/* Stings drill */
+.drill-cta { margin-bottom: 10px; }
+.primary-file.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--line); }
+.drill .feedback { margin: 0; }

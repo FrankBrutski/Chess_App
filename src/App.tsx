@@ -13,6 +13,7 @@ const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m
 const TrainPage = lazy(() => import('./pages/Train').then((m) => ({ default: m.TrainPage })));
 const MasterBoard = lazy(() => import('./pages/MasterBoard').then((m) => ({ default: m.MasterBoard })));
 const StingsPage = lazy(() => import('./pages/Stings').then((m) => ({ default: m.StingsPage })));
+const StingDrill = lazy(() => import('./pages/StingDrill').then((m) => ({ default: m.StingDrill })));
 const StingCard = lazy(() => import('./pages/StingCard').then((m) => ({ default: m.StingCard })));
 const IssuesPage = lazy(() => import('./pages/Issues').then((m) => ({ default: m.IssuesPage })));
 
@@ -50,7 +51,7 @@ function route(page: string | undefined, id: string, sub: string, sub2: string) 
     case 'openings':
       return <Library />;
     case 'stings':
-      return <StingsPage tab={id} />;
+      return id === 'drill' ? <StingDrill /> : <StingsPage tab={id} />;
     case 'sting':
       return <StingCard id={id} />;
     default:

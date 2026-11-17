@@ -111,3 +111,17 @@ class Engine {
 }
 
 export const engine = new Engine();
+
+/** One quick evaluation (best line only). Resolves undefined if the engine can't run or takes too long. */
+export function evaluate(fen: string, depth = 14, timeoutMs = 8000): Promise<EngineLine | undefined> {
+  return new Promise((resolve) => {
+    let best: EngineLine | undefined;
+    const t = setTimeout(() => { engine.stop(); resolve(best); }, timeoutMs);
+    engine
+      .analyse({ fen, depth, multiPv: 1 }, (lines, done) => {
+        best = lines[0] ?? best;
+        if (done) { clearTimeout(t); resolve(best); }
+      })
+      .catch(() => { clearTimeout(t); resolve(undefined); });
+  });
+}
