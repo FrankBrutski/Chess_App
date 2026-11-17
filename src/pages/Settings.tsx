@@ -185,6 +185,15 @@ export function Settings() {
             </select>
           </label>
           <label className="field">
+            <span>Paragraph gap</span>
+            <select value={text.paraGap} onChange={(e) => changeText({ paraGap: +e.target.value })}>
+              <option value={0}>None</option>
+              <option value={0.3}>Small</option>
+              <option value={0.6}>Normal</option>
+              <option value={1}>Large</option>
+            </select>
+          </label>
+          <label className="field">
             <span>Font</span>
             <select value={text.font} onChange={(e) => changeText({ font: e.target.value as TextPrefs['font'] })}>
               <option value="system">System</option>

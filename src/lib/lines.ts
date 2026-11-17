@@ -34,7 +34,14 @@ export const isUserMove = (n: MoveNode, color: 'white' | 'black') => isWhiteMove
 
 /** `[Line: Fried Liver]` in a study comment names the line that starts at that move. */
 export const LINE_MARKER = /\[\s*Line\s*:\s*([^\]\n]+?)\s*\]/i;
-export const stripLineMarker = (text: string) => text.replace(new RegExp(LINE_MARKER.source, 'gi'), '').replace(/\s{2,}/g, ' ').trim();
+/** Remove `[Line: …]` markers but keep the study's line breaks and paragraph gaps. */
+export const stripLineMarker = (text: string) =>
+  text
+    .replace(new RegExp(LINE_MARKER.source, 'gi'), '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n[ \t]+/g, '\n')
+    .trim();
 
 const markerIn = (texts: string[] | undefined) => {
   for (const t of texts ?? []) {
