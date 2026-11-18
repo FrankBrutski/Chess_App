@@ -4,7 +4,7 @@ import { db } from '../lib/db';
 import { navigate } from '../router';
 import { HexMark } from '../components/HexMark';
 import { loadTrainData } from '../lib/training';
-import { userKeys } from '../lib/srs';
+import { lineState, userKeys } from '../lib/srs';
 import { groupHives, moveInList, tierName } from '../lib/hives';
 import type { Course } from '../lib/model';
 
@@ -18,11 +18,27 @@ export function Library() {
   }, []);
   const [reorder, setReorder] = useState(false);
   // Due moves in lines you drill (skipped lines, combs, sections and hives don't count).
-  const due = useLiveQuery(async () => {
+  // Per hive: lines learned / drillable lines, and moves due.
+  const stats = useLiveQuery(async () => {
     const d = await loadTrainData({ hive: '', section: '', comb: '', mainHivesOnly: false, mainLinesOnly: false });
     const now = Date.now();
-    return new Set(d.lines.flatMap(userKeys).filter((k) => (d.cells.get(k)?.due ?? Infinity) <= now)).size;
+    const isDue = (k: string) => (d.cells.get(k)?.due ?? Infinity) <= now;
+    const per = new Map<string, { lines: number; learned: number; due: number; fresh: number }>();
+    const dueKeys = new Map<string, Set<string>>();
+    for (const t of d.lines) {
+      const s = per.get(t.hiveId) ?? { lines: 0, learned: 0, due: 0, fresh: 0 };
+      s.lines++;
+      if (lineState(t, d.cells, now) === 'new') s.fresh++;
+      else s.learned++;
+      per.set(t.hiveId, s);
+      const set = dueKeys.get(t.hiveId) ?? new Set<string>();
+      for (const k of userKeys(t)) if (isDue(k)) set.add(k);
+      dueKeys.set(t.hiveId, set);
+    }
+    for (const [id, set] of dueKeys) per.get(id)!.due = set.size;
+    return { per, due: new Set(d.lines.flatMap(userKeys).filter(isDue)).size };
   }, []);
+  const due = stats?.due;
 
   const move = async (list: Course[], i: number, dir: -1 | 1) => {
     const next = moveInList(list, i, dir);
@@ -67,22 +83,42 @@ export function Library() {
             <div key={t.tier} className="tier-group">
               <h3 className="tier-head">{tierName(t.tier)}</h3>
               <ul className="card-list">
-                {t.hives.map((h, i) => (
-                  <li key={h.id} className="comb-row">
-                    <button type="button" className="card" onClick={() => navigate(`/course/${h.id}`)}>
-                      <span className="card-title"><HexMark small /> {h.name}</span>
-                      <span className="card-sub">
-                        {h.sections.length} section{h.sections.length === 1 ? '' : 's'} · {counts?.get(h.id) ?? 0} combs
-                      </span>
-                    </button>
-                    {reorder && (
-                      <div className="comb-tools">
-                        <button type="button" onClick={() => move(t.hives, i, -1)} disabled={i === 0} aria-label="Move up">▲</button>
-                        <button type="button" onClick={() => move(t.hives, i, 1)} disabled={i === t.hives.length - 1} aria-label="Move down">▼</button>
+                {t.hives.map((h, i) => {
+                  const st = stats?.per.get(h.id);
+                  const pct = st?.lines ? (st.learned / st.lines) * 100 : 0;
+                  return (
+                    <li key={h.id} className="hive-item">
+                      <div className="hive-card">
+                        <button type="button" className="hive-open" onClick={() => navigate(`/course/${h.id}`)}>
+                          <span className="hive-name"><HexMark small /> {h.name}</span>
+                          <span className="card-sub">
+                            {counts?.get(h.id) ?? 0} comb{counts?.get(h.id) === 1 ? '' : 's'}{h.sections.length > 1 ? ` in ${h.sections.length} sections` : ''}{h.skip ? ' · not drilled' : ''}
+                          </span>
+                          <span className="hive-progress">
+                            <span className="hive-count"><b>{st?.learned ?? 0}</b> / {st?.lines ?? 0} lines learned</span>
+                            <span className="bar" aria-hidden="true"><span style={{ width: `${pct}%` }} /></span>
+                          </span>
+                        </button>
+                        {!reorder && (st?.lines ?? 0) > 0 && (
+                          <div className="hive-actions">
+                            {st!.due > 0 ? (
+                              <button type="button" className="review-btn" onClick={() => navigate(`/train/hive/${h.id}/review`)}>Review ({st!.due})</button>
+                            ) : <span />}
+                            <button type="button" className="learn-btn" disabled={!st!.fresh} onClick={() => navigate(`/train/hive/${h.id}/learn`)}>
+                              {st!.fresh ? 'Learn' : 'All learned'}
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </li>
-                ))}
+                      {reorder && (
+                        <div className="comb-tools">
+                          <button type="button" onClick={() => move(t.hives, i, -1)} disabled={i === 0} aria-label="Move up">▲</button>
+                          <button type="button" onClick={() => move(t.hives, i, 1)} disabled={i === t.hives.length - 1} aria-label="Move down">▼</button>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ))}

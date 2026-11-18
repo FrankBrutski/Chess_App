@@ -8,6 +8,9 @@ import { splitLines } from '../lib/lines';
 import { TIER_CHOICES, groupHives, moveInList, tierName } from '../lib/hives';
 import { moveComb } from '../lib/importer';
 import type { Chapter, Course, Section } from '../lib/model';
+import { trainLinesOf } from '../lib/training';
+import { lineState, type Cell } from '../lib/srs';
+import { ProgressRing } from '../components/ProgressRing';
 
 /** Only ever link out to lichess.org (a restored backup file could contain anything). */
 const isLichessUrl = (u: string) => /^https:\/\/lichess\.org\//.test(u);
@@ -30,6 +33,13 @@ export function CoursePage({ courseId }: { courseId: string }) {
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [moving, setMoving] = useState<string>(); // comb id being moved
+  const cells = useLiveQuery(async () => new Map<string, Cell>((await db.cells.toArray()).map((c) => [c.key, c])), []);
+  /** Drillable lines in a comb and how many are learned (skipped combs and lines don't count). */
+  const progress = (c: Chapter) => {
+    const lines = trainLinesOf([c], false, allHives ?? []);
+    const now = Date.now();
+    return { total: lines.length, learned: cells ? lines.filter((t) => lineState(t, cells, now) !== 'new').length : 0 };
+  };
 
   const issueCount = chapters?.reduce((n, c) => n + (c.issues?.length ?? 0), 0) ?? 0;
 
@@ -130,16 +140,26 @@ export function CoursePage({ courseId }: { courseId: string }) {
                 {combs.length === 0 && <button type="button" className="danger-link" onClick={() => deleteSection(section.id)}>Remove</button>}
               </div>
             )}
-            <ol className="card-list chapters" aria-label={`Combs in ${section.name}`}>
+            <ol className="comb-lines chapters" aria-label={`Combs in ${section.name}`}>
               {combs.map((c, ci) => (
                 <li key={c.id} className="comb-row">
-                  <button type="button" className="card" onClick={() => navigate(`/read/${c.id}`)}>
-                    <span className="card-title">{c.title}</span>
-                    <span className="card-sub">
-                      {combStats(c).lines} line{combStats(c).lines === 1 ? '' : 's'} · {combStats(c).moves} moves
-                      {c.issues?.length ? ` · ${c.issues.length} issue${c.issues.length === 1 ? '' : 's'}` : ''}
-                      {c.skip ? ' · not drilled' : c.skipLines?.length ? ` · ${c.skipLines.length} skipped` : ''}
-                    </span>
+                  <button type="button" className="comb-line" onClick={() => navigate(`/read/${c.id}`)}>
+                    {(() => {
+                      const pr = progress(c);
+                      return (
+                        <>
+                          <ProgressRing done={pr.learned} total={pr.total} />
+                          <span className="comb-line-text">
+                            <span className="card-title">{c.title}</span>
+                            <span className="card-sub">
+                              {pr.total ? `${pr.learned} / ${pr.total} line${pr.total === 1 ? "" : "s"} learned` : `${combStats(c).lines} line${combStats(c).lines === 1 ? '' : 's'} · not drilled`}
+                              {c.issues?.length ? ` · ${c.issues.length} issue${c.issues.length === 1 ? '' : 's'}` : ''}
+                              {!c.skip && c.skipLines?.length ? ` · ${c.skipLines.length} skipped` : ''}
+                            </span>
+                          </span>
+                        </>
+                      );
+                    })()}
                   </button>
                   {editing && (
                     <div className="comb-tools">
