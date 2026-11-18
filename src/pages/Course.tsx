@@ -73,7 +73,7 @@ export function CoursePage({ courseId }: { courseId: string }) {
         <button type="button" className="icon-btn small-text" onClick={() => setEditing(!editing)}>{editing ? 'Done' : 'Edit'}</button>
       </header>
       <p className="muted small hive-sub">
-        {course.color === 'white' ? 'White' : 'Black'} · {tierName(course.tier)} · {chapters?.length ?? 0} combs{course.skip ? ' · not drilled' : ''}
+        {course.color === 'white' ? 'White' : 'Black'} · {tierName(course.tier)} · {chapters?.length ?? 0} comb{chapters?.length === 1 ? '' : 's'}{course.skip ? ' · not drilled' : ''}
       </p>
 
       {editing && (
@@ -126,7 +126,7 @@ export function CoursePage({ courseId }: { courseId: string }) {
           <details key={section.id} className="section" open>
             <summary>
               <span className="section-name">{section.name}</span>
-              <span className="muted small">{combs.length} combs{section.skip ? ' · not drilled' : ''}</span>
+              <span className="muted small">{combs.length} comb{combs.length === 1 ? '' : 's'}{section.skip ? ' · not drilled' : ''}</span>
             </summary>
             {editing && (
               <div className="section-tools">
@@ -207,6 +207,7 @@ export function CoursePage({ courseId }: { courseId: string }) {
                 </li>
               ))}
             </ol>
+            {editing && (
             <div className="section-actions">
               {combs.length > 0 && <button type="button" onClick={() => navigate(`/train/section/${course.id}/${section.id}`)}>Train section</button>}
               <button type="button" onClick={() => navigate(`/import/${course.id}/${section.id}`)}>
@@ -216,14 +217,17 @@ export function CoursePage({ courseId }: { courseId: string }) {
                 <a className="muted small" href={section.sourceUrl} target="_blank" rel="noreferrer">Open on Lichess</a>
               )}
             </div>
+            )}
           </details>
         );
       })}
 
       <div className="stack">
-        <button type="button" className="wide" onClick={() => navigate(`/import/${course.id}`)}>
-          Import a study into this hive
-        </button>
+        {(editing || chapters?.length === 0) && (
+          <button type="button" className="wide" onClick={() => navigate(`/import/${course.id}`)}>
+            Import a study into this hive
+          </button>
+        )}
         {!editing ? null : !confirming ? (
           <button type="button" className="danger-link" onClick={() => setConfirming(true)}>Delete hive</button>
         ) : (
