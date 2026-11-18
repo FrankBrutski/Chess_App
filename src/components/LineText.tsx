@@ -74,13 +74,10 @@ function LineTextImpl(p: Props) {
   const start = folded ? Math.min(line.shared, shown.length) : 0;
   if (folded && start > 0) {
     blocks.push(
-      <div key="trunk" className="trunk">
-        <span className="trunk-label">Same start as line {line.number - 1}:</span>{' '}
-        {shown.slice(0, start).map((n, i) => (
-          <span key={n.id}>{moveButton(n, i === 0)} </span>
-        ))}
-        <button type="button" className="link-btn small" onClick={() => setTrunkOpen(true)}>Show notes</button>
-      </div>,
+      <p key="trunk" className="trunk-slim">
+        Same start as line {line.number - 1}, {Math.ceil(start / 2)} move{start > 2 ? 's' : ''} ·{' '}
+        <button type="button" className="link-btn small" onClick={() => setTrunkOpen(true)}>Show</button>
+      </p>,
     );
   } else if (!folded) {
     annotations.get('root')?.after.forEach((pc, i) => {

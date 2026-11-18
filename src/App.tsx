@@ -4,6 +4,7 @@ import { Home } from './pages/Home';
 import { Library } from './pages/Library';
 import { CoursePage } from './pages/Course';
 import { Reader } from './pages/Reader';
+import { CombLines } from './pages/CombLines';
 import { requestPersistence } from './lib/db';
 import { UpdateBanner } from './components/UpdateBanner';
 
@@ -34,6 +35,8 @@ function route(page: string | undefined, id: string, sub: string, sub2: string) 
   switch (page) {
     case 'course':
       return <CoursePage courseId={id} />;
+    case 'comb':
+      return <CombLines chapterId={id} />;
     case 'read':
       return <Reader chapterId={id} startNodeId={sub} />;
     case 'line':

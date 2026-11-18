@@ -143,7 +143,7 @@ export function CoursePage({ courseId }: { courseId: string }) {
             <ol className="comb-lines chapters" aria-label={`Combs in ${section.name}`}>
               {combs.map((c, ci) => (
                 <li key={c.id} className="comb-row">
-                  <button type="button" className="comb-line" onClick={() => navigate(`/read/${c.id}`)}>
+                  <button type="button" className="comb-line" onClick={() => navigate(`/comb/${c.id}`)}>
                     {(() => {
                       const pr = progress(c);
                       return (
