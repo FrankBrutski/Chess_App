@@ -17,6 +17,8 @@
   --warn: #a35f00;
   --radius: 12px;
   --safe-top: env(safe-area-inset-top, 0px);
+  /* iOS 26 softens and fades the first ~20pt below the status bar in installed web apps; keep header text out of that band. */
+  --top-gap: min(18px, calc(var(--safe-top) * 100)); /* 0 when there is no status bar overlap */
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   color-scheme: light;
   /* Reading text (Settings → Text). */
@@ -114,7 +116,7 @@ h2 { font-size: 17px; margin: 8px 0 0; }
 /* ---------- pages ---------- */
 .page {
   max-width: 640px; margin: 0 auto;
-  padding: calc(12px + var(--safe-top)) 16px calc(24px + var(--safe-bottom));
+  padding: calc(12px + var(--safe-top) + var(--top-gap)) 16px calc(24px + var(--safe-bottom));
 }
 .page-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; min-height: 44px; }
 .page-header > span { min-width: 44px; }
@@ -151,10 +153,10 @@ h2 { font-size: 17px; margin: 8px 0 0; }
 .reader { height: 100%; display: flex; flex-direction: column; }
 .reader-header {
   display: flex; align-items: center; gap: 4px;
-  padding: calc(4px + var(--safe-top)) 4px 4px; border-bottom: 1px solid var(--line); background: var(--bg);
+  padding: calc(4px + var(--safe-top) + var(--top-gap)) 4px 4px; border-bottom: 1px solid var(--line); background: var(--bg);
 }
 .reader-title { flex: 1; min-width: 0; text-align: center; }
-.reader-course { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reader-course { font-size: 13px; font-weight: 500; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .reader-chapter { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .reader-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .board-pane { flex: none; padding: 8px 8px 0; display: flex; flex-direction: column; gap: 6px; align-items: center; }
