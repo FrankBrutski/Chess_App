@@ -14,6 +14,7 @@ import { getLadder, getMissPolicy, getStingEngineCheck, getStingHoney, getStingN
 import { Board } from '../components/Board';
 import { StingMark } from '../components/HexMark';
 import { ShotImage } from '../components/ShotImage';
+import { Icon, Toolbar } from '../components/Toolbar';
 
 type Feedback = { kind: 'good' | 'bad' | 'info' | 'done'; text: string } | undefined;
 type Outcome = { kind: 'best' | 'also' | 'extra'; mistakes: number; honey?: number; extraSan?: string; extraFen?: string };
@@ -45,7 +46,7 @@ export function StingDrill() {
   const card = plan[qi];
 
   return (
-    <div className="page drill-page">
+    <div className="page drill-page with-toolbar">
       <header className="page-header">
         <button type="button" className="icon-btn" onClick={() => navigate('/stings/ready')} aria-label="Back to Stings">‹</button>
         <h1 className="brand"><StingMark /> Drill</h1>
@@ -100,6 +101,7 @@ function DrillCard({ card, onDone, onNext }: { card: Sting; onDone: (o: Outcome)
   const [resetKey, setResetKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<Outcome>();
+  const [flipped, setFlipped] = useState(false);
   const [shown, setShown] = useState<{ fen: string; uci?: string }>(); // a refutation or the solution being shown
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(timer.current), []);
@@ -221,7 +223,7 @@ function DrillCard({ card, onDone, onNext }: { card: Sting; onDone: (o: Outcome)
     <div className="stack drill">
       <Board
         fen={shown?.fen ?? at.fen}
-        orientation={card.orientation ?? userColor}
+        orientation={flipped ? ((card.orientation ?? userColor) === 'white' ? 'black' : 'white') : card.orientation ?? userColor}
         lastMove={shown?.uci ?? (at === root ? undefined : (at as MoveNode).uci)}
         hintShapes={hint}
         movable={movable}
@@ -229,24 +231,22 @@ function DrillCard({ card, onDone, onNext }: { card: Sting; onDone: (o: Outcome)
         resetKey={resetKey}
       />
       {feedback && <div className={`feedback fb-${feedback.kind}`}><span>{feedback.text}</span></div>}
-      <div className="row">
-        {shown ? (
-          <button type="button" className="primary" onClick={() => { setShown(undefined); setAt(root); setFeedback({ kind: 'info', text: 'Try again from the start.' }); }}>Try again</button>
-        ) : outcome ? (
-          <>
-            {outcome.extraSan && <button type="button" onClick={() => void addAsAlso()}>Add as Also wins</button>}
-            <button type="button" onClick={() => navigate(`/sting/${card.id}`)}>Open card</button>
-            <button type="button" className="primary" onClick={onNext}>Next ›</button>
-          </>
-        ) : (
-          <>
-            <button type="button" onClick={showHint} disabled={!yourTurn}>Hint</button>
-            <button type="button" onClick={() => { setMistakes((m) => Math.max(m, 1)); setAt(best); setLine(best); setFeedback({ kind: 'info', text: `The move was ${moveNumber(best.ply)}${best.san}. Play on from here.` }); advance(best, best); }} disabled={!yourTurn || at !== root}>
-              Show the move
-            </button>
-          </>
-        )}
-      </div>
+      <Toolbar fixed items={shown ? [
+        { label: 'Try again', icon: Icon.retry, primary: true, onClick: () => { setShown(undefined); setAt(root); setFeedback({ kind: 'info', text: 'Try again from the start.' }); } },
+        { label: 'Flip', icon: Icon.flip, onClick: () => setFlipped(!flipped) },
+      ] : outcome ? [
+        ...(outcome.extraSan ? [{ label: 'Add as Also', icon: Icon.lines, onClick: () => void addAsAlso() }] : []),
+        { label: 'Open card', icon: Icon.eye, onClick: () => navigate(`/sting/${card.id}`) },
+        { label: 'Flip', icon: Icon.flip, onClick: () => setFlipped(!flipped) },
+        { label: 'Next card', icon: Icon.skip, primary: true, onClick: onNext },
+      ] : [
+        { label: 'Hint', icon: Icon.hint, onClick: showHint, disabled: !yourTurn },
+        {
+          label: 'Show move', icon: Icon.eye, disabled: !yourTurn || at !== root,
+          onClick: () => { setMistakes((m) => Math.max(m, 1)); setAt(best); setLine(best); setFeedback({ kind: 'info', text: `The move was ${moveNumber(best.ply)}${best.san}. Play on from here.` }); advance(best, best); },
+        },
+        { label: 'Flip', icon: Icon.flip, onClick: () => setFlipped(!flipped) },
+      ]} />
       {outcome && (
         <div className="muted small center">
           {card.title && <p><b>{card.title}</b></p>}
