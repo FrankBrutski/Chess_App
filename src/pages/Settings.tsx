@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { screenCheckOn, setScreenCheck } from '../components/ScreenCheck';
 import { getTopGap, setTopGap } from '../lib/screenFit';
 import { exportBackupZip, importBackupFile, requestPersistence } from '../lib/db';
 import { goBack } from '../router';
@@ -274,9 +273,6 @@ export function Settings() {
             <button type="button" onClick={() => setTopGapState(setTopGap(topGap - 2))} aria-label="Less space">−</button>
             <button type="button" onClick={() => setTopGapState(setTopGap(topGap + 2))} aria-label="More space">+</button>
           </div>
-          <button type="button" className="wide" onClick={() => setScreenCheck(!screenCheckOn())}>
-            Screen check (shows screen sizes for fixing the layout)
-          </button>
         </div>
       </details>
       <h3 className="set-head">Opening trainer</h3>
