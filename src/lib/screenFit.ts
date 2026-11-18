@@ -1,23 +1,21 @@
 /**
- * iOS Home Screen apps sometimes lay out fixed elements in a viewport shorter than the screen,
- * which leaves an empty band below the bottom toolbar. Measure the shortfall and expose it as
- * --fix-gap so full-screen layouts can stretch over it. Does nothing in a normal browser tab.
+ * Some iOS Home Screen apps get a web view that stops short of the screen bottom (iOS keeps the
+ * strip by the home indicator for itself and nothing drawn there shows). Detect that and mark
+ * <html data-short-view> so the bottom toolbar drops its home-indicator padding, which would
+ * otherwise be added on top of the strip iOS already keeps. Does nothing in a browser tab.
  */
 export function startScreenFit() {
   const standalone =
     (navigator as Navigator & { standalone?: boolean }).standalone === true ||
     window.matchMedia?.('(display-mode: standalone)').matches;
   if (!standalone) return;
-  const probe = document.createElement('div');
-  probe.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;visibility:hidden';
-  document.body.appendChild(probe);
   const measure = () => {
     const long = Math.max(screen.width, screen.height);
     const short = Math.min(screen.width, screen.height);
     const full = window.innerWidth > window.innerHeight ? short : long;
-    const gap = Math.round(full - probe.getBoundingClientRect().bottom);
-    // Only a plausible shortfall (status-bar sized); anything else means we measured something odd.
-    document.documentElement.style.setProperty('--fix-gap', gap > 0 && gap < 120 ? `${gap}px` : '0px');
+    const gap = full - Math.min(window.innerHeight, document.documentElement.clientHeight || window.innerHeight);
+    if (gap > 8) document.documentElement.setAttribute('data-short-view', '');
+    else document.documentElement.removeAttribute('data-short-view');
   };
   measure();
   window.addEventListener('resize', measure);
