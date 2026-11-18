@@ -70,6 +70,10 @@ export const setReviewNotes = (on: boolean) => write('reviewNotes', on ? null : 
 export const getShowNewMoves = () => read('showNewMoves') === '1';
 export const setShowNewMoves = (on: boolean) => write('showNewMoves', on ? '1' : null);
 
+/** How many new lines one Learn session teaches. */
+export const getLearnBatch = () => Math.max(1, Math.min(20, Number(read('learnBatch') ?? 5)));
+export const setLearnBatch = (n: number) => write('learnBatch', n === 5 ? null : String(n));
+
 export const getHoneyLearn = () => Math.max(0, Number(read('honeyLearn') ?? 1));
 export const getHoneyReview = () => Math.max(0, Number(read('honeyReview') ?? 2));
 export const setHoneyLearn = (n: number) => write('honeyLearn', String(n));
