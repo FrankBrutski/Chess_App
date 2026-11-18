@@ -1,31 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { Key } from 'chessground/types';
-import { db, chaptersOf } from '../lib/db';
-import type { MoveNode, Shape, TreeNode } from '../lib/model';
-import { indexTree, docOrder, pathTo, moveNumber, isWhiteMove } from '../lib/tree';
+import { db } from '../lib/db';
+import type { MoveNode, TreeNode } from '../lib/model';
+import { indexTree, pathTo, moveNumber } from '../lib/tree';
 import { annotateChapter } from '../lib/annotations';
 import { Board } from '../components/Board';
 import { ChapterText, type Ghost } from '../components/ChapterText';
 import { navigate } from '../router';
 import { buildIndex, lookup } from '../lib/positions';
 import { getAutoLink, getBoldNotation, getEngineOn, getLineOrder, getShowMarkers, setEngineOn } from '../lib/prefs';
-import { destsOf, sanOfBoardMove, stripSan } from '../lib/boardMove';
 import { EnginePanel } from '../components/EnginePanel';
 import { LineText } from '../components/LineText';
 import { Icon, Toolbar } from '../components/Toolbar';
 import { splitLines, type Line } from '../lib/lines';
 
-type Feedback = { kind: 'good' | 'bad' | 'info' | 'done'; text: string } | undefined;
-
 export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapterId: string; startNodeId?: string; lineId?: string; lineNodeId?: string }) {
   const chapter = useLiveQuery(() => db.chapters.get(chapterId), [chapterId]);
-  const siblings = useLiveQuery(async () => (chapter ? chaptersOf(chapter.courseId) : []), [chapter?.courseId]);
   const course = useLiveQuery(async () => (chapter ? db.courses.get(chapter.courseId) : undefined), [chapter?.courseId]);
 
   const idx = useMemo(() => (chapter ? indexTree(chapter.root) : undefined), [chapter]);
-  const order = useMemo(() => (chapter ? docOrder(chapter.root) : []), [chapter]);
-  const orderIndex = useMemo(() => new Map(order.map((id, i) => [id, i])), [order]);
   const annotations = useMemo(() => (chapter ? annotateChapter(chapter.root, { auto: getAutoLink() }) : new Map()), [chapter]);
   const lines = useMemo(() => (chapter ? splitLines(chapter.root, chapter.orientation, { names: chapter.lineNames, order: getLineOrder() }) : []), [chapter]);
   // Line view (one line at a time, Chessable style) is the default; "Whole study" shows the full tree.
@@ -43,10 +36,6 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
   const [currentId, setCurrentId] = useState('root');
   const [ghost, setGhost] = useState<Ghost>();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [play, setPlay] = useState<{ frontier: string } | undefined>();
-  const [feedback, setFeedback] = useState<Feedback>();
-  const [hint, setHint] = useState<Shape[]>([]);
-  const [resetKey, setResetKey] = useState(0);
   const [engineOn, setEngineOnState] = useState(getEngineOn());
   const toggleEngine = () => { setEngineOn(!engineOn); setEngineOnState(!engineOn); };
   const textRef = useRef<HTMLDivElement>(null);
@@ -57,8 +46,6 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
     setMode(startNodeId ? 'study' : 'line');
     setLineKey(lineId ?? 'main');
     setGhost(undefined);
-    setPlay(undefined);
-    setFeedback(undefined);
     setCollapsed(new Set());
     if (!startNodeId) textRef.current?.scrollTo({ top: 0 });
   }, [chapterId, startNodeId, lineId, lineNodeId]);
@@ -73,25 +60,10 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
     },
     [line, lineIndex, idx],
   );
-  const userColor = chapter?.orientation ?? 'white';
-
-  // ----- Visibility in play-along: show everything up to (not including) the next main move -----
-  const isVisible = useCallback(
-    (id: string) => {
-      if (!play || !idx) return true;
-      const f = idx.byId.get(play.frontier);
-      const next = f?.children[0];
-      if (!next) return true;
-      const cut = orderIndex.get(next.id) ?? Infinity;
-      return (orderIndex.get(id) ?? 0) < cut;
-    },
-    [play, idx, orderIndex],
-  );
 
   // ----- Navigation -----
   const select = useCallback((id: string) => {
     setGhost(undefined);
-    setHint([]);
     setCurrentId(id);
   }, []);
 
@@ -111,11 +83,8 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
       return;
     }
     const next = nextOf(currentId);
-    if (!next) return;
-    if (play && currentId === play.frontier) return; // in play-along you make the move yourself
-    if (!isVisible(next.id)) return;
-    setCurrentId(next.id);
-  }, [ghost, nextOf, play, currentId, isVisible]);
+    if (next) setCurrentId(next.id);
+  }, [ghost, nextOf, currentId]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -131,81 +100,7 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
   useEffect(() => {
     const el = textRef.current?.querySelector('[data-active], [data-current]') as HTMLElement | null;
     el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  }, [currentId, ghost, play?.frontier]);
-
-  // ----- Play-along -----
-  const stopPlay = () => {
-    setPlay(undefined);
-    setFeedback(undefined);
-    setHint([]);
-  };
-
-  // Auto-play the opponent's moves.
-  useEffect(() => {
-    if (!play || !idx) return;
-    const f = idx.byId.get(play.frontier);
-    const next = nextOf(play.frontier);
-    if (!f) return;
-    if (!next) {
-      setFeedback({
-        kind: 'done',
-        text: line ? `End of line ${line.number}.` : 'End of this line. Pick a variation in the text to keep exploring, or restart.',
-      });
-      return;
-    }
-    const isUserMove = (isWhiteMove(next.ply) ? 'white' : 'black') === userColor;
-    if (isUserMove) return;
-    const t = setTimeout(() => {
-      setPlay({ frontier: next.id });
-      setCurrentId(next.id);
-    }, 550);
-    return () => clearTimeout(t);
-  }, [play, idx, userColor, nextOf, line]);
-
-  const viewing = !!play && (currentId !== play.frontier || !!ghost);
-  const frontierNode = play ? idx?.byId.get(play.frontier) : undefined;
-  const expected = play ? nextOf(play.frontier) : undefined;
-  const awaitingUser =
-    !!play && !viewing && !!expected && (isWhiteMove(expected.ply) ? 'white' : 'black') === userColor;
-
-  const movable = useMemo(
-    () => (awaitingUser && frontierNode ? { color: userColor, dests: destsOf(frontierNode.fen) } : undefined),
-    [awaitingUser, frontierNode, userColor],
-  );
-
-  const onUserMove = useCallback(
-    (orig: Key, dest: Key) => {
-      if (!frontierNode || !expected) return;
-      const san = sanOfBoardMove(frontierNode.fen, orig, dest, expected.san);
-      if (!san) return;
-      if (stripSan(san) === stripSan(expected.san)) {
-        setHint([]);
-        setFeedback({ kind: 'good', text: `${moveNumber(expected.ply)}${expected.san} ✓` });
-        setPlay({ frontier: expected.id });
-        setCurrentId(expected.id);
-        return;
-      }
-      const alt = frontierNode.children.find((c) => stripSan(c.san) === stripSan(san));
-      const altLine = alt && line ? lines.find((l) => l !== line && l.nodes.includes(alt)) : undefined;
-      setFeedback({
-        kind: 'bad',
-        text: altLine
-          ? `${san} is line ${altLine.number} (${altLine.name}). This line plays ${expected.san}.`
-          : alt
-            ? `${san} is covered in the text as a side line. Try the repertoire move.`
-            : `${san} isn't the repertoire move. Try again or tap Hint.`,
-      });
-      // Put the piece back.
-      setResetKey((k) => k + 1);
-    },
-    [frontierNode, expected, line, lines],
-  );
-
-  const showHint = () => {
-    if (!expected) return;
-    setHint([{ color: 'blue', orig: expected.uci.slice(0, 2) }]);
-    if (hint.length) setHint([{ color: 'blue', orig: expected.uci.slice(0, 2), dest: expected.uci.slice(2, 4) }]);
-  };
+  }, [currentId, ghost]);
 
   if (chapter === undefined || !idx || !node) return <div className="page"><p className="muted">Loading…</p></div>;
   if (chapter === null) return <div className="page"><p>Comb not found.</p></div>;
@@ -213,21 +108,15 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
   const boardFen = ghost ? ghost.line[ghost.index].fen : node.fen;
   const lastMove = ghost ? ghost.line[ghost.index].uci : (node as MoveNode).uci;
   const shapes = ghost ? [] : node.shapes;
-  const branches = !line && !ghost && !play && node.children.length > 1 ? node.children : [];
+  const branches = !line && !ghost && node.children.length > 1 ? node.children : [];
   const openLine = (l: Line) => {
-    setPlay(undefined);
-    setFeedback(undefined);
     setGhost(undefined);
-    setHint([]);
     setMode('line');
     setLineKey(l.id);
     // Show the position where the line branches off.
     setCurrentId(l.shared > 0 ? l.nodes[l.shared - 1].id : 'root');
     textRef.current?.scrollTo({ top: 0 });
   };
-  const lineNo = line ? line.number - 1 : -1;
-  const chIndex = siblings?.findIndex((c) => c.id === chapter.id) ?? -1;
-  const nextCh = siblings && chIndex >= 0 && chIndex < siblings.length - 1 ? siblings[chIndex + 1] : undefined;
   const pathLen = currentId === 'root' ? 0 : pathTo(idx, currentId).length;
   return (
     <div className="reader">
@@ -249,10 +138,6 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
             orientation={flipped ? (chapter.orientation === 'white' ? 'black' : 'white') : chapter.orientation}
             lastMove={lastMove}
             shapes={shapes}
-            hintShapes={hint}
-            movable={movable}
-            onMove={onUserMove}
-            resetKey={resetKey}
             check={/[+#]$/.test(ghost ? ghost.line[ghost.index].san : (node as MoveNode).san ?? '')}
           />
           {ghost && (
@@ -266,22 +151,9 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
           {engineOn && (
             <EnginePanel
               fen={boardFen}
-              paused={awaitingUser}
-              onPlayLine={ghost ? undefined : (line) => { setHint([]); setGhost({ line, index: 0, baseId: currentId, source: 'engine' }); }}
+              paused={false}
+              onPlayLine={ghost ? undefined : (line) => setGhost({ line, index: 0, baseId: currentId, source: 'engine' })}
             />
-          )}
-          {feedback && (
-            <div className={`feedback fb-${feedback.kind}`}>
-              <span>{feedback.text}</span>
-            </div>
-          )}
-          {viewing && (
-            <div className="ghost-bar">
-              <span>Looking around</span>
-              <button type="button" className="link-btn" onClick={() => { setGhost(undefined); setCurrentId(play!.frontier); }}>
-                Back to your move
-              </button>
-            </div>
           )}
         </div>
 
@@ -309,12 +181,10 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
               annotations={annotations}
               currentId={currentId}
               ghost={ghost}
-              visibleUpTo={play ? (play.frontier === 'root' ? -1 : lineIndex.get(play.frontier)) : undefined}
               onSelect={(id) => select(id)}
-              onGhost={(g) => { setHint([]); setGhost(g); }}
+              onGhost={setGhost}
               onOpenLine={openLine}
               boldNotation={getBoldNotation()}
-              hideBranches={!!play}
               showMarkers={showMarkers}
               elsewhere={posIndex ? (n) =>
                 lookup(posIndex, n.fen)
@@ -333,7 +203,6 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
             annotations={annotations}
             currentId={currentId}
             ghost={ghost}
-            isVisible={isVisible}
             collapsed={collapsed}
             onToggle={(id) =>
               setCollapsed((s) => {
@@ -344,37 +213,15 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
               })
             }
             onSelect={(id) => select(id)}
-            onGhost={(g) => { setHint([]); setGhost(g); }}
+            onGhost={setGhost}
             boldNotation={getBoldNotation()}
           />
-          )}
-          {play && feedback?.kind === 'done' && (
-            <div className="done-actions">
-              <button type="button" onClick={() => { select('root'); setPlay({ frontier: 'root' }); setFeedback(undefined); }}>
-                {line ? 'Restart line' : 'Restart comb'}
-              </button>
-              {line && lineNo < lines.length - 1 && (
-                <button type="button" className="primary" onClick={() => openLine(lines[lineNo + 1])}>Next line</button>
-              )}
-              {line && lineNo === lines.length - 1 && nextCh && (
-                <button type="button" className="primary" onClick={() => navigate(`/comb/${nextCh.id}`)}>Next comb</button>
-              )}
-              <button type="button" onClick={() => navigate(`/train/comb/${chapter.id}`)}>Train this comb</button>
-              <button type="button" onClick={stopPlay}>Back to reading</button>
-            </div>
           )}
           <div className="text-end-spacer" />
         </div>
       </div>
       <Toolbar
-        items={play ? [
-          { label: 'Back', icon: Icon.back, onClick: stepBack, disabled: !ghost && pathLen === 0 },
-          { label: 'Next', icon: Icon.next, onClick: stepForward },
-          { label: 'Hint', icon: Icon.hint, onClick: showHint, disabled: !awaitingUser },
-          { label: 'Stop', icon: Icon.stop, onClick: stopPlay, primary: true },
-          { label: 'Flip', icon: Icon.flip, onClick: () => setFlipped(!flipped) },
-          { label: 'Engine', icon: Icon.engine, onClick: toggleEngine, pressed: engineOn, title: 'Stockfish evaluation (runs on this phone)' },
-        ] : [
+        items={[
           { label: 'Start', icon: Icon.start, onClick: () => select('root'), disabled: pathLen === 0 && !ghost },
           { label: 'Back', icon: Icon.back, onClick: stepBack, disabled: !ghost && pathLen === 0 },
           { label: 'Next', icon: Icon.next, onClick: stepForward, disabled: !ghost && !nextOf(currentId) },

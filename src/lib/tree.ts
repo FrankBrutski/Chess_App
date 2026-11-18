@@ -61,24 +61,3 @@ export function countMoves(n: MoveNode): number {
   for (const c of n.children) total += countMoves(c);
   return total;
 }
-
-/**
- * Nodes in reading order, matching how the reader lays the chapter out:
- * each move, then the alternatives to it (as variations), then the next move.
- */
-export function docOrder(root: RootNode): string[] {
-  const out: string[] = [];
-  const seq = (parent: TreeNode, startIdx: number) => {
-    let node = parent.children[startIdx];
-    out.push(node.id);
-    if (startIdx === 0) for (let i = 1; i < parent.children.length; i++) seq(parent, i);
-    while (node.children.length) {
-      const p = node;
-      node = p.children[0];
-      out.push(node.id);
-      for (let i = 1; i < p.children.length; i++) seq(p, i);
-    }
-  };
-  if (root.children.length) seq(root, 0);
-  return out;
-}

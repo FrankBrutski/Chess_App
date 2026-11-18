@@ -152,7 +152,6 @@ export function StingExplorer({ card }: { card: Sting }) {
           annotations={annotations}
           currentId={ghost ? '' : currentId}
           ghost={ghost}
-          isVisible={() => true}
           collapsed={collapsed}
           onToggle={(id) => setCollapsed((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; })}
           onSelect={(id) => { setGhost(undefined); setCurrentId(id); }}
