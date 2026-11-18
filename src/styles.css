@@ -128,6 +128,11 @@ h2 { font-size: 17px; margin: 8px 0 0; }
   padding: calc(12px + var(--safe-top) + var(--top-gap)) 16px calc(24px + var(--safe-bottom));
 }
 .page-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; min-height: 44px; }
+/* Keep the header (and its back arrow) on screen when a long page scrolls: it sticks just under the status strip. */
+.page > .page-header {
+  position: sticky; top: calc(var(--safe-top) + var(--top-gap)); z-index: 30;
+  margin: 0 -16px 16px; padding: 4px 16px; background: var(--bg); border-bottom: 1px solid transparent;
+}
 .page-header > span { min-width: 44px; }
 .page-header h1:first-child { text-align: left; }
 .stack { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
@@ -223,7 +228,7 @@ h2 { font-size: 17px; margin: 8px 0 0; }
   border: none; background: none; padding: 6px 2px 4px; min-height: 52px; border-radius: 10px;
   color: var(--text); font-size: 11px; line-height: 1.1;
 }
-.tool:disabled { opacity: .35; }
+.tool:disabled { opacity: .35; color: var(--text); -webkit-text-fill-color: var(--text); } /* iOS fades disabled text on its own too */
 .tool-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .tool.primary-tool { color: var(--honey-deep); font-weight: 700; }
 .tool.primary-tool .tool-icon { color: var(--honey); }
