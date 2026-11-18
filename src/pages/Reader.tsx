@@ -270,9 +270,10 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
           ‹
         </button>
         <button type="button" className="reader-title title-btn" onClick={() => setDrawer(!drawer)} aria-expanded={drawer} title="Pick a line">
+          {course?.name && <span className="reader-hive">{course.name}</span>}
           <span className="reader-chapter">{chapter.title}</span>
           <span className="reader-course">
-            {line ? <><span className="line-num">Line {line.number}/{lines.length}</span> {line.name}</> : <>{course?.name} · whole study</>} <span aria-hidden="true">▾</span>
+            {line ? <><span className="line-num">Line {line.number}/{lines.length}</span> {line.name}</> : <>Whole study · {lines.length} lines</>} <span aria-hidden="true">▾</span>
           </span>
         </button>
         <button type="button" className="icon-btn small-text" onClick={() => navigate(`/train/comb/${chapter.id}`)} title="Train this comb">Train</button>
