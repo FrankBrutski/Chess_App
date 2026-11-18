@@ -243,9 +243,9 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
           ‹
         </button>
         <div className="reader-title">
-          {course?.name && <span className="reader-hive">{course.name}</span>}
           <span className="reader-chapter">{chapter.title}</span>
           <span className="reader-course">
+            {course?.name && <>{course.name} · </>}
             {line ? <><span className="line-num">Line {line.number}/{lines.length}</span> {line.name}</> : <>Whole study · {lines.length} lines</>}
           </span>
         </div>
