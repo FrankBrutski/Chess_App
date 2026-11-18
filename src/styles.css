@@ -17,8 +17,8 @@
   --warn: #a35f00;
   --radius: 12px;
   --safe-top: env(safe-area-inset-top, 0px);
-  /* iOS 26 softens and fades the first ~20pt below the status bar in installed web apps; keep header text out of that band. */
-  --top-gap: min(18px, calc(var(--safe-top) * 100)); /* 0 when there is no status bar overlap */
+  /* iOS softens and fades a band just below the status bar in installed web apps. Keep text out of that band. */
+  --top-gap: min(28px, calc(var(--safe-top) * 100)); /* 0 when there is no status bar overlap */
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   color-scheme: light;
   /* Reading text (Settings → Text). */
@@ -73,9 +73,10 @@
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
-/* A solid strip behind the iPhone status bar: text scrolls under it cleanly instead of blurring through. */
+/* A solid strip over the status bar and the iOS fade band below it: only plain background sits there,
+   so the fade has nothing to blur, and scrolled text disappears under it cleanly. */
 body::before {
-  content: ''; position: fixed; top: 0; left: 0; right: 0; height: var(--safe-top);
+  content: ''; position: fixed; top: 0; left: 0; right: 0; height: calc(var(--safe-top) + var(--top-gap));
   background: var(--bg); z-index: 1000; pointer-events: none;
 }
 body {
