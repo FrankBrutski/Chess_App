@@ -3,7 +3,7 @@ import { Icon } from '../components/Toolbar';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, today } from '../lib/db';
 import { navigate } from '../router';
-import { getScope, setScope, type TrainScope } from '../lib/prefs';
+import { getLearnBatch, getScope, setScope, type TrainScope } from '../lib/prefs';
 import { loadTrainData, type TrainData } from '../lib/training';
 import { lineState, planLearn, planReview, userKeys } from '../lib/srs';
 import { groupHives, tierName } from '../lib/hives';
@@ -33,7 +33,7 @@ export function TrainPage({ kind, a, b }: { kind?: string; a?: string; b?: strin
   const [data, setData] = useState<TrainData>();
   const [session, setSession] = useState<{ mode: 'learn' | 'review'; items: SessionItem[] }>();
   const [reload, setReload] = useState(0);
-  const [learnCount, setLearnCount] = useState(5);
+  const learnCount = getLearnBatch();
 
   // A comb link fills in its hive and section.
   useEffect(() => {
@@ -174,38 +174,25 @@ export function TrainPage({ kind, a, b }: { kind?: string; a?: string; b?: strin
       </div>
       </details>
 
-      {stats && (
-        <div className="train-stats">
-          <div><b>{stats.due}</b><span>moves due</span></div>
-          <div><b>{stats.fresh}</b><span>new lines</span></div>
-          <div><b>{stats.learned}</b><span>of {stats.lines} lines learned</span></div>
-        </div>
-      )}
-
       <div className="stack">
-        {!!stats?.due && (
-          <button type="button" className="primary wide" onClick={startReview}>
-            Review {stats.due} due move{stats.due === 1 ? '' : 's'}
-          </button>
-        )}
-        <div className="row learn-row">
-          <button type="button" className={`wide${stats?.due ? '' : ' primary'}`} disabled={!stats?.fresh} onClick={startLearn}>
-            {stats?.fresh ? 'Learn new lines' : 'No new lines here'}
-          </button>
-          <select value={learnCount} onChange={(e) => setLearnCount(+e.target.value)} aria-label="New lines per session" title="New lines per session">
-            {[1, 3, 5, 10, 20].map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </div>
-        {!stats?.due && (
-          <p className="muted small center">
-            {stats?.upcoming ? `Next review ${whenText(stats.upcoming)}.` : 'Nothing to review yet.'}
-          </p>
-        )}
+        <button type="button" className={`big-btn${stats?.due ? ' primary' : ''}`} disabled={!stats?.due} onClick={startReview}>
+          <b>Review</b>
+          <span>
+            {stats?.due
+              ? `${stats.due} move${stats.due === 1 ? '' : 's'} due`
+              : stats?.upcoming ? `Nothing due · next review ${whenText(stats.upcoming)}` : 'Nothing due yet · learn a line first'}
+          </span>
+        </button>
+        <button type="button" className={`big-btn${stats?.due ? '' : ' primary'}`} disabled={!stats?.fresh} onClick={startLearn}>
+          <b>Learn new lines</b>
+          <span>
+            {stats?.fresh
+              ? `${stats.fresh} waiting · ${Math.min(learnCount, stats.fresh)} at a time`
+              : stats?.lines ? `All ${stats.lines} lines here are learned` : 'No drilled lines here'}
+          </span>
+        </button>
+        {stats && stats.lines > 0 && <p className="muted small center">{stats.learned} of {stats.lines} lines learned</p>}
       </div>
-      <p className="muted small">
-        Lines you play a second-choice move in are for reading only and aren't drilled. Change the review ladder and
-        what a miss does in Settings → Training.
-      </p>
     </div>
   );
 }

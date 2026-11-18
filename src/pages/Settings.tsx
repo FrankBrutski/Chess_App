@@ -6,7 +6,7 @@ import { getStingEngineCheck, getStingHoney, getStingNew, setStingEngineCheck, s
 import { appVersion, buildTime, checkForUpdate } from '../lib/update';
 import { getEngineDepth, getEngineLines, setEngineDepth, setEngineLines } from '../lib/prefs';
 import {
-  getHoneyLearn, getHoneyReview, getLadder, getMissPolicy, getRetryBack, getReviewNotes, getShowNewMoves, setHoneyLearn,
+  getHoneyLearn, getHoneyReview, getLearnBatch, setLearnBatch, getLadder, getMissPolicy, getRetryBack, getReviewNotes, getShowNewMoves, setHoneyLearn,
   setHoneyReview, setLadder, setMissPolicy, setRetryBack, setReviewNotes, setShowNewMoves,
 } from '../lib/prefs';
 import { getShowMarkers, setShowMarkers } from '../lib/prefs';
@@ -28,6 +28,7 @@ export function Settings() {
   const [ladderMsg, setLadderMsg] = useState<string>();
   const [miss, setMiss] = useState(getMissPolicy());
   const [retry, setRetry] = useState(getRetryBack());
+  const [batch, setBatch] = useState(getLearnBatch());
   const [reviewNotes, setRN] = useState(getReviewNotes());
   const [showNew, setSN] = useState(getShowNewMoves());
   const [hl, setHl] = useState(getHoneyLearn());
@@ -319,12 +320,19 @@ export function Settings() {
       <details className="set-group">
         <summary>
           <h2>Training</h2>
-          <span className="muted small">Review ladder, misses, honey</span>
+          <span className="muted small">New lines per session, review ladder, misses, honey</span>
         </summary>
         <div className="stack">
         <p className="muted small">
           Each of your moves climbs one step of the review ladder when you get it right. Steps use m, h, d, w, mo or y.
+          Lines you play a second-choice move in are for reading only and aren't drilled.
         </p>
+        <label className="field">
+          <span>New lines per Learn session</span>
+          <select value={batch} onChange={(e) => { setBatch(+e.target.value); setLearnBatch(+e.target.value); }}>
+            {[1, 3, 5, 10, 20].map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
         <label className="field">
           <span>Review ladder</span>
           <input value={ladderText} onChange={(e) => saveLadder(e.target.value)} aria-label="Review ladder" />
