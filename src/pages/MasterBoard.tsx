@@ -12,6 +12,8 @@ import { moveNumber } from '../lib/tree';
 import { Board } from '../components/Board';
 import { PositionSetup, START_FEN, setupFenOf } from '../components/PositionSetup';
 import { HexMark } from '../components/HexMark';
+import { guessBoard } from '../lib/crop';
+import { readShot, readingNote } from '../lib/readShot';
 
 const START = START_FEN;
 
@@ -30,6 +32,7 @@ export function MasterBoard() {
   const [turn, setTurn] = useState<'w' | 'b'>('w');
   const [orientation, setOrientation] = useState<'white' | 'black'>('white');
   const [msg, setMsg] = useState<string>();
+  const [note, setNote] = useState<string>();
   // A game or move sequence (Play / Paste): positions and which one is shown.
   const [game, setGame] = useState<PlayedPosition[]>();
   const [at, setAt] = useState(0);
@@ -55,6 +58,26 @@ export function MasterBoard() {
     setTurn(t as 'w' | 'b');
     setMsg(undefined);
     return true;
+  };
+
+  /** Find the board in a screenshot and read its pieces into Set up (on the phone, no network). */
+  const readPicture = async (f: Blob) => {
+    setMsg(undefined);
+    setNote('Reading the pieces…');
+    try {
+      const img = await createImageBitmap(f);
+      const r = await readShot(img, await guessBoard(img));
+      img.close();
+      setGame(undefined);
+      setMode('setup');
+      setBoard(r.board);
+      setTurn(r.turn);
+      setOrientation(r.orientation);
+      setNote(readingNote(r));
+    } catch {
+      setNote(undefined);
+      setMsg("Couldn't read that picture. Set the position up by hand.");
+    }
   };
 
   const startPlay = (from: string) => {
@@ -98,7 +121,7 @@ export function MasterBoard() {
       <header className="page-header">
         <button type="button" className="icon-btn" onClick={() => navigate('/openings')} aria-label="Back">‹</button>
         <h1 className="brand"><HexMark /> Master board</h1>
-        <label className="icon-btn small-text shot-btn" title="Pin a screenshot above the board (stays on this phone, not saved)">
+        <label className="icon-btn small-text shot-btn" title="Read a position from a screenshot and pin it above the board (stays on this phone, not saved)">
           <input
             type="file"
             accept="image/*"
@@ -108,6 +131,7 @@ export function MasterBoard() {
               if (shot) URL.revokeObjectURL(shot);
               setShot(URL.createObjectURL(f));
               setShotOpen(true);
+              void readPicture(f);
             }}
           />
           Screenshot
@@ -183,6 +207,7 @@ export function MasterBoard() {
           <button type="button" className="primary wide" onClick={doPaste}>Look up</button>
         </div>
       )}
+      {note && mode === 'setup' && <p className="small">{note}</p>}
       {msg && <p className="small bad-text">{msg}</p>}
 
       <section className="results" aria-live="polite">

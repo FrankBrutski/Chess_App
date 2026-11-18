@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { db } from '../lib/db';
+import { readShot, readingNote } from '../lib/readShot';
 import type { Sting, SourceKind, StingSource } from '../lib/model';
 import { PositionSetup, START_FEN, setupFenOf } from './PositionSetup';
 import { ShotImage } from './ShotImage';
@@ -19,6 +21,34 @@ export function StingSetup({ card, onSaved }: { card: Sting; onSaved: () => void
   const [game, setGame] = useState<PlayedPosition[]>();
   const [shotOpen, setShotOpen] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const [reading, setReading] = useState(false);
+
+  /** Fill the board from the screenshot (on the phone, no network). */
+  const readPicture = async () => {
+    if (!card.shotId) return;
+    setReading(true);
+    try {
+      const shot = await db.shots.get(card.shotId);
+      if (!shot) return;
+      const img = await createImageBitmap(shot.blob);
+      const r = await readShot(img);
+      img.close();
+      setBoard(r.board);
+      setTurn(r.turn);
+      setOrientation(r.orientation);
+      setMsg(readingNote(r));
+    } catch {
+      setMsg("Couldn't read that picture. Set the position by hand.");
+    } finally {
+      setReading(false);
+    }
+  };
+  // A new card: read the pieces straight away.
+  useEffect(() => {
+    if (!card.fen && card.shotId) void readPicture();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [card.id]);
 
   const fen = setupFenOf(board, turn);
   const checked = useMemo(() => normalizeFen(fen), [fen]);
@@ -74,9 +104,14 @@ export function StingSetup({ card, onSaved }: { card: Sting; onSaved: () => void
       {card.shotId && (
         <div>
           {shotOpen && <ShotImage shotId={card.shotId} className="setup-shot" alt="Board from the screenshot" />}
-          <button type="button" className="link-btn small" onClick={() => setShotOpen(!shotOpen)}>
-            {shotOpen ? 'Hide screenshot' : 'Show screenshot'}
-          </button>
+          <div className="row">
+            <button type="button" className="link-btn small" onClick={() => setShotOpen(!shotOpen)}>
+              {shotOpen ? 'Hide screenshot' : 'Show screenshot'}
+            </button>
+            <button type="button" className="link-btn small" disabled={reading} onClick={() => void readPicture()}>
+              {reading ? 'Reading the pieces…' : 'Read pieces from the screenshot'}
+            </button>
+          </div>
         </div>
       )}
 
