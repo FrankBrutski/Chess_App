@@ -61,6 +61,17 @@ export function TrainPage({ kind, a, b }: { kind?: string; a?: string; b?: strin
     };
   }, [data, now]);
 
+  // #/train/hive/<id>/learn or /review (the buttons on a hive card) start straight away, once.
+  const [autoStart, setAutoStart] = useState<'learn' | 'review' | undefined>(kind === 'hive' && (b === 'learn' || b === 'review') ? b : undefined);
+  useEffect(() => {
+    if (!autoStart || !data || session || data.lines.some((t) => t.hiveId !== a)) return;
+    setAutoStart(undefined);
+    const items = autoStart === 'learn'
+      ? planLearn(data.lines, data.cells).slice(0, learnCount).map((t) => ({ t }))
+      : planReview(data.lines, data.cells, Date.now());
+    if (items.length) setSession({ mode: autoStart, items });
+  }, [autoStart, data]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (session && data) {
     return (
       <TrainSession

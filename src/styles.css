@@ -329,7 +329,7 @@ fieldset.target legend { font-weight: 600; padding: 0 4px; }
 .comb-tools { display: flex; gap: 4px; }
 .comb-tools button { min-width: 40px; padding: 4px 8px; }
 .move-to { width: 100%; }
-details.section { margin: 0 0 14px; border-left: 3px solid var(--honey); padding-left: 10px; }
+details.section { margin: 0 0 14px; }
 details.section > summary { list-style: none; display: flex; justify-content: space-between; align-items: baseline; cursor: pointer; padding: 6px 0 8px; }
 details.section > summary::-webkit-details-marker { display: none; }
 details.section > summary::before { content: '▾'; color: var(--honey-deep); margin-right: 6px; }
@@ -550,3 +550,41 @@ div.shot-full { aspect-ratio: 3 / 4; }
 .drill-cta { margin-bottom: 10px; }
 .primary-file.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--line); }
 .drill .feedback { margin: 0; }
+
+/* ---------- hive cards (Openings) ---------- */
+.hive-item { display: flex; flex-direction: column; gap: 6px; }
+.hive-card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 4px 16px 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .05);
+}
+.hive-open {
+  display: flex; flex-direction: column; align-items: stretch; gap: 4px; width: 100%; text-align: left;
+  border: none; background: none; padding: 12px 0 4px; min-height: 0; font: inherit; color: inherit;
+}
+.hive-name { font-size: 20px; font-weight: 700; }
+.hive-progress { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.hive-count { color: var(--muted); font-size: 15px; }
+.hive-count b { color: var(--text); }
+.bar { display: block; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--honey); border-radius: 4px; }
+.hive-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.hive-actions button { min-height: 46px; font-weight: 700; border-radius: 10px; }
+.review-btn { background: var(--honey-deep); border-color: var(--honey-deep); color: #fff; }
+.learn-btn { background: var(--text); border-color: var(--text); color: var(--bg); }
+.learn-btn:disabled { background: none; color: var(--muted); border-color: var(--line); opacity: 1; }
+
+/* ---------- comb rows inside a hive (wall to wall, with a progress ring) ---------- */
+.comb-lines { list-style: none; margin: 0 -16px 12px; padding: 0; border-top: 1px solid var(--line); }
+.comb-lines > li { border-bottom: 1px solid var(--line); flex-direction: column; gap: 0; }
+.comb-line {
+  display: flex; align-items: center; gap: 16px; width: 100%; text-align: left; border: none; border-radius: 0;
+  background: none; padding: 14px 16px; min-height: 76px; font: inherit; color: inherit;
+}
+.comb-line:active { background: color-mix(in srgb, var(--honey) 10%, transparent); }
+.comb-line-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.comb-line .card-title { font-size: 17px; }
+.comb-lines .comb-tools, .comb-lines .move-to { padding: 0 16px 12px; }
+.ring { flex: none; }
+.ring-track { fill: none; stroke: var(--line); stroke-width: 5; }
+.ring-fill { fill: none; stroke: var(--honey-deep); stroke-width: 5; stroke-linecap: round; }
+.ring-text { font-size: 11px; font-weight: 700; fill: var(--honey-deep); }
