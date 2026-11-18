@@ -255,11 +255,9 @@ h2 { font-size: 17px; margin: 8px 0 0; }
 .mv-num { margin-right: 2px; }
 .mv-var .mv-num, .mv-main .mv-num { font-weight: inherit; }
 .nag { margin-left: 1px; font-weight: 700; }
-.nag-good { color: var(--good); }
-.nag-bad { color: var(--bad); }
-.nag-interesting { color: #2a7fbf; }
-.nag-dubious { color: var(--warn); }
-.nag-eval { color: var(--muted); font-weight: 400; margin-left: 4px; }
+/* Annotation marks (! ? ?! += …) are the same colour as the moves around them. */
+.nag-good, .nag-bad, .nag-interesting, .nag-dubious { color: inherit; }
+.nag-eval { color: inherit; font-weight: 400; margin-left: 4px; }
 .variation { position: relative; margin: 2px 0 10px; padding: 4px 8px 2px 26px; border-left: 2px solid var(--var); background: var(--var-bg); border-radius: 0 8px 8px 0; font-size: 16px; }
 .variation .variation { background: transparent; margin-left: 0; }
 .variation .comment-inline { font-family: var(--read-font); }
