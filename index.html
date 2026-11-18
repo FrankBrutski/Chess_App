@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- "default", not black-translucent: the page then starts below the status bar, outside the blur
+         iOS 26 and later draw over the top of Home Screen apps. Read only when the app is added. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Apiary" />
     <meta name="theme-color" content="#f5efe1" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
