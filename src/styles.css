@@ -18,7 +18,7 @@
   --radius: 12px;
   --safe-top: env(safe-area-inset-top, 0px);
   /* iOS softens and fades a band just below the status bar in installed web apps. Keep text out of that band. */
-  --top-gap: min(28px, calc(var(--safe-top) * 100)); /* 0 when there is no status bar overlap */
+  --top-gap: min(20px, calc(var(--safe-top) * 100)); /* 0 when there is no status bar overlap */
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   color-scheme: light;
   /* Reading text (Settings → Text). */
@@ -152,12 +152,14 @@ h2 { font-size: 17px; margin: 8px 0 0; }
 
 /* ---------- reader ---------- */
 /* Pinned to the screen edges: on an installed iPhone app 100% height stops short of the bottom. */
-.reader { position: fixed; inset: 0; display: flex; flex-direction: column; }
+.reader { position: fixed; top: 0; left: 0; right: 0; bottom: calc(-1 * var(--fix-gap, 0px)); display: flex; flex-direction: column; }
 .reader-header {
   display: flex; align-items: center; gap: 4px;
   padding: calc(4px + var(--safe-top) + var(--top-gap)) 4px 4px; border-bottom: 1px solid var(--line); background: var(--bg);
 }
-.reader-title { flex: 1; min-width: 0; text-align: center; }
+.reader-title { flex: 1; min-width: 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.reader-title > span { max-width: 100%; }
+.reader-title .line-num { font-size: inherit; }
 .title-btn {
   display: flex; flex-direction: column; align-items: center; gap: 1px; border: none; background: none;
   padding: 2px 4px; min-height: 0; font: inherit; color: inherit;
@@ -218,7 +220,7 @@ h2 { font-size: 17px; margin: 8px 0 0; }
 .tool.primary-tool { color: var(--honey-deep); font-weight: 700; }
 .tool.primary-tool .tool-icon { color: var(--honey); }
 .tool.on { color: var(--honey-deep); background: color-mix(in srgb, var(--honey) 14%, transparent); }
-.toolbar.fixed { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; }
+.toolbar.fixed { position: fixed; left: 0; right: 0; bottom: calc(-1 * var(--fix-gap, 0px)); z-index: 50; }
 .page.with-toolbar { padding-bottom: calc(96px + var(--safe-bottom)); }
 .drawer-nav { margin-bottom: 8px; }
 .drawer-nav button { flex: 1; min-width: 0; font-size: 14px; padding: 6px 4px; }
@@ -394,6 +396,8 @@ details.section:not([open]) > summary::before { content: '▸'; }
 .trunk .mv { color: var(--text); font-weight: 600; }
 .trunk-label { font-size: 13px; }
 .trunk-fold { display: block; margin: 0 0 8px; }
+.trunk-slim { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
+.trunk-slim .link-btn { min-height: 0; padding: 0; }
 .link-btn.small { font-size: 13px; }
 
 /* ---------- trainer ---------- */
@@ -590,3 +594,22 @@ div.shot-full { aspect-ratio: 3 / 4; }
 .ring-track { fill: none; stroke: var(--line); stroke-width: 5; }
 .ring-fill { fill: none; stroke: var(--honey-deep); stroke-width: 5; stroke-linecap: round; }
 .ring-text { font-size: 11px; font-weight: 700; fill: var(--honey-deep); }
+
+/* ---------- a comb's lines ---------- */
+.comb-heading { font-size: 20px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.comb-actions { margin-bottom: 12px; }
+.comb-actions > button { flex: 1; }
+.line-rows { margin-top: 12px; }
+.line-row-wrap { display: flex; align-items: center; gap: 6px; padding-right: 12px; }
+.line-row-wrap .comb-line { flex: 1; min-width: 0; }
+.line-rows .card-title { font-size: 16px; }
+.line-rows .line-edit { padding: 10px 16px; }
+.line-rows .line-edit input { flex: 1; min-width: 0; }
+.line-dot {
+  flex: 0 0 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 13px; font-weight: 700; color: var(--muted); border: 2px solid var(--line);
+}
+.dot-new { color: var(--honey-deep); }
+.dot-due { color: var(--honey-deep); border-color: var(--honey); }
+.dot-learned { color: var(--bg); background: var(--honey-deep); border-color: var(--honey-deep); }
+.line-rows .comb-line { min-height: 60px; padding: 10px 4px 10px 16px; }

@@ -14,7 +14,7 @@ import { destsOf, sanOfBoardMove, stripSan } from '../lib/boardMove';
 import { EnginePanel } from '../components/EnginePanel';
 import { LineText } from '../components/LineText';
 import { Icon, Toolbar } from '../components/Toolbar';
-import { lineThrough, splitLines, type Line } from '../lib/lines';
+import { splitLines, type Line } from '../lib/lines';
 
 type Feedback = { kind: 'good' | 'bad' | 'info' | 'done'; text: string } | undefined;
 
@@ -31,7 +31,6 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
   // Line view (one line at a time, Chessable style) is the default; "Whole study" shows the full tree.
   const [mode, setMode] = useState<'line' | 'study'>(startNodeId ? 'study' : 'line');
   const [lineKey, setLineKey] = useState(lineId ?? 'main');
-  const [drawer, setDrawer] = useState(false);
   const [flipped, setFlipped] = useState(false);
   // Transpositions: the same position elsewhere in your repertoire.
   const showMarkers = getShowMarkers();
@@ -57,7 +56,6 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
     setCurrentId(startNodeId ?? lineNodeId ?? 'root');
     setMode(startNodeId ? 'study' : 'line');
     setLineKey(lineId ?? 'main');
-    setDrawer(false);
     setGhost(undefined);
     setPlay(undefined);
     setFeedback(undefined);
@@ -229,85 +227,31 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
     setHint([]);
     setMode('line');
     setLineKey(l.id);
-    setDrawer(false);
     // Show the position where the line branches off.
     setCurrentId(l.shared > 0 ? l.nodes[l.shared - 1].id : 'root');
     textRef.current?.scrollTo({ top: 0 });
   };
   const lineNo = line ? line.number - 1 : -1;
-  const renameLine = (l: Line, name: string) =>
-    db.chapters.where('id').equals(chapter.id).modify((c) => {
-      const names = { ...(c.lineNames ?? {}) };
-      if (name.trim() && name.trim() !== l.label) names[l.id] = name.trim();
-      else delete names[l.id];
-      c.lineNames = names;
-    });
   const chIndex = siblings?.findIndex((c) => c.id === chapter.id) ?? -1;
-  const prevCh = chIndex > 0 ? siblings![chIndex - 1] : undefined;
   const nextCh = siblings && chIndex >= 0 && chIndex < siblings.length - 1 ? siblings[chIndex + 1] : undefined;
   const pathLen = currentId === 'root' ? 0 : pathTo(idx, currentId).length;
-  const toggleWhole = () => {
-    setPlay(undefined);
-    setFeedback(undefined);
-    setGhost(undefined);
-    if (line) setMode('study');
-    else {
-      setMode('line');
-      const through = lineThrough(lines, currentId);
-      if (through) setLineKey(through.id);
-    }
-  };
-
   return (
     <div className="reader">
       <div className="reader-top">
       <header className="reader-header">
-        <button type="button" className="icon-btn" onClick={() => navigate(`/course/${chapter.courseId}`)} aria-label="Back to hive" title="Back to hive">
+        <button type="button" className="icon-btn" onClick={() => navigate(`/comb/${chapter.id}`)} aria-label="Back to the lines" title="Back to the lines">
           ‹
         </button>
-        <button type="button" className="reader-title title-btn" onClick={() => setDrawer(!drawer)} aria-expanded={drawer} title="Pick a line">
+        <div className="reader-title">
           {course?.name && <span className="reader-hive">{course.name}</span>}
           <span className="reader-chapter">{chapter.title}</span>
           <span className="reader-course">
-            {line ? <><span className="line-num">Line {line.number}/{lines.length}</span> {line.name}</> : <>Whole study · {lines.length} lines</>} <span aria-hidden="true">▾</span>
+            {line ? <><span className="line-num">Line {line.number}/{lines.length}</span> {line.name}</> : <>Whole study · {lines.length} lines</>}
           </span>
-        </button>
+        </div>
         <span className="icon-btn" aria-hidden="true" />
       </header>
 
-      {drawer && (
-        <LineList
-          lines={lines}
-          current={line}
-          nav={
-            <div className="row drawer-nav">
-              <button
-                type="button"
-                disabled={!line || (lineNo <= 0 && !prevCh)}
-                onClick={() => { setDrawer(false); if (lineNo > 0) openLine(lines[lineNo - 1]); else if (prevCh) navigate(`/read/${prevCh.id}`); }}
-              >‹ {line && lineNo <= 0 && prevCh ? 'Previous comb' : 'Previous line'}</button>
-              <button type="button" onClick={() => { setDrawer(false); toggleWhole(); }}>{line ? 'Whole study' : 'One line at a time'}</button>
-              <button
-                type="button"
-                disabled={!line || (lineNo >= lines.length - 1 && !nextCh)}
-                onClick={() => { setDrawer(false); if (lineNo < lines.length - 1) openLine(lines[lineNo + 1]); else if (nextCh) navigate(`/read/${nextCh.id}`); }}
-              >{line && lineNo >= lines.length - 1 && nextCh ? 'Next comb' : 'Next line'} ›</button>
-            </div>
-          }
-          skipped={new Set(chapter.skipLines ?? [])}
-          onOpen={openLine}
-          onRename={renameLine}
-          onToggleDrill={(l) =>
-            db.chapters.where('id').equals(chapter.id).modify((c) => {
-              const s = new Set(c.skipLines ?? []);
-              if (s.has(l.id)) s.delete(l.id);
-              else s.add(l.id);
-              c.skipLines = [...s];
-            })
-          }
-          onClose={() => setDrawer(false)}
-        />
-      )}
       </div>
 
       <div className="reader-body">
@@ -421,7 +365,7 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
                 <button type="button" className="primary" onClick={() => openLine(lines[lineNo + 1])}>Next line</button>
               )}
               {line && lineNo === lines.length - 1 && nextCh && (
-                <button type="button" className="primary" onClick={() => navigate(`/read/${nextCh.id}`)}>Next comb</button>
+                <button type="button" className="primary" onClick={() => navigate(`/comb/${nextCh.id}`)}>Next comb</button>
               )}
               <button type="button" onClick={() => navigate(`/train/comb/${chapter.id}`)}>Train this comb</button>
               <button type="button" onClick={stopPlay}>Back to reading</button>
@@ -447,93 +391,6 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
           { label: 'Engine', icon: Icon.engine, onClick: toggleEngine, pressed: engineOn, title: 'Stockfish evaluation (runs on this phone)' },
         ]}
       />
-    </div>
-  );
-}
-
-function LineList({ lines, current, nav, skipped, onOpen, onRename, onToggleDrill, onClose }: {
-  lines: Line[];
-  nav?: React.ReactNode;
-  current?: Line;
-  skipped: Set<string>;
-  onOpen: (l: Line) => void;
-  onRename: (l: Line, name: string) => void;
-  onToggleDrill: (l: Line) => void;
-  onClose: () => void;
-}) {
-  const [q, setQ] = useState('');
-  const [editing, setEditing] = useState<string>();
-  const needle = q.trim().toLowerCase().replace(/\s+/g, ' ');
-  const matches = (l: Line) => {
-    if (!needle) return true;
-    const moves = l.nodes.map((n) => `${moveNumber(n.ply)}${n.san}`).join(' ').toLowerCase();
-    const sans = l.nodes.map((n) => n.san).join(' ').toLowerCase();
-    return [l.name, l.label, `line ${l.number}`, moves, sans].some((t) => t.toLowerCase().replace(/…/g, '...').includes(needle.replace(/…/g, '...')) || t.toLowerCase().includes(needle));
-  };
-  const shown = lines.filter(matches);
-  return (
-    <div className="line-drawer">
-      {nav}
-      <div className="row">
-        <input
-          type="search"
-          placeholder="Find a line: name or moves (e.g. Nf6 Ng5)"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          aria-label="Find a line"
-        />
-        <button type="button" onClick={onClose}>Close</button>
-      </div>
-      <ol className="line-list">
-        {shown.map((l) => (
-          <li key={l.id} className={l === current ? 'current' : undefined}>
-            {editing === l.id ? (
-              <form
-                className="row"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const v = new FormData(e.currentTarget).get('name');
-                  void onRename(l, String(v ?? ''));
-                  setEditing(undefined);
-                }}
-              >
-                <input name="name" defaultValue={l.name} autoFocus aria-label={`Name for line ${l.number}`} />
-                <button type="submit">Save</button>
-              </form>
-            ) : (
-              <>
-                <button type="button" className="line-row" onClick={() => onOpen(l)}>
-                  <span className="line-num">{l.number}</span>
-                  <span className="line-row-text">
-                    <span className="line-name">{l.name}</span>
-                    {l.name !== l.label && <span className="muted small"> · {l.label}</span>}
-                    {!l.trainable && <span className="tag">reading only</span>}
-                    {l.trainable && skipped.has(l.id) && <span className="tag">not drilled</span>}
-                  </span>
-                </button>
-                {l.trainable && (
-                  <button
-                    type="button"
-                    className={`drill-btn${skipped.has(l.id) ? ' off' : ''}`}
-                    onClick={() => onToggleDrill(l)}
-                    aria-pressed={!skipped.has(l.id)}
-                    aria-label={`Drill line ${l.number}`}
-                    title={skipped.has(l.id) ? 'Not drilled: tap to drill this line' : 'Drilled: tap to stop drilling this line'}
-                  >
-                    {skipped.has(l.id) ? 'Skip' : 'Drill'}
-                  </button>
-                )}
-                <button type="button" className="icon-btn small-text" onClick={() => setEditing(l.id)} aria-label={`Rename line ${l.number}`}>✎</button>
-              </>
-            )}
-          </li>
-        ))}
-        {shown.length === 0 && <li className="muted small">No line matches.</li>}
-      </ol>
-      <p className="muted small">
-        Name a line by tapping ✎, or in Lichess by writing [Line: name] in the comment on the move where it branches.
-        Tap Drill to switch a line between drilled and not drilled; skipped lines stay here to read and keep their progress.
-      </p>
     </div>
   );
 }

@@ -1,0 +1,146 @@
+import { useMemo, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../lib/db';
+import { navigate } from '../router';
+import { moveNumber } from '../lib/tree';
+import { getLineOrder } from '../lib/prefs';
+import { splitLines, type Line } from '../lib/lines';
+import { combSkipped } from '../lib/training';
+import { lineState, type Cell, type LineState } from '../lib/srs';
+
+/** A comb's lines, one wall-to-wall row each. Tapping a line opens it in the reader; backing out returns here. */
+export function CombLines({ chapterId }: { chapterId: string }) {
+  const chapter = useLiveQuery(() => db.chapters.get(chapterId), [chapterId]);
+  const course = useLiveQuery(async () => (chapter ? db.courses.get(chapter.courseId) : undefined), [chapter?.courseId]);
+  const cells = useLiveQuery(async () => new Map<string, Cell>((await db.cells.toArray()).map((c) => [c.key, c])), []);
+  const lines = useMemo(
+    () => (chapter ? splitLines(chapter.root, chapter.orientation, { names: chapter.lineNames, order: getLineOrder() }) : []),
+    [chapter],
+  );
+  const [q, setQ] = useState('');
+  const [editing, setEditing] = useState<string>();
+
+  if (chapter === undefined) return <div className="page"><p className="muted">Loading…</p></div>;
+  if (chapter === null) return <div className="page"><p>Comb not found.</p></div>;
+
+  const skipped = new Set(chapter.skipLines ?? []);
+  const combOff = course ? combSkipped(chapter, [course]) : !!chapter.skip;
+  const now = Date.now();
+  const state = (l: Line): LineState | undefined =>
+    cells && l.trainable && !skipped.has(l.id) && !combOff
+      ? lineState({ chapterId: chapter.id, hiveId: chapter.courseId, combTitle: chapter.title, color: chapter.orientation, line: l }, cells, now)
+      : undefined;
+  const states = lines.map(state);
+  const drilled = states.filter((s) => s !== undefined).length;
+  const learned = states.filter((s) => s && s !== 'new').length;
+
+  const needle = q.trim().toLowerCase().replace(/…/g, '...');
+  const matches = (l: Line) => {
+    if (!needle) return true;
+    const moves = l.nodes.map((n) => `${moveNumber(n.ply)}${n.san}`).join(' ');
+    const sans = l.nodes.map((n) => n.san).join(' ');
+    return [l.name, l.label, `line ${l.number}`, moves, sans].some((t) => t.toLowerCase().replace(/…/g, '...').includes(needle));
+  };
+
+  const rename = (l: Line, name: string) =>
+    db.chapters.where('id').equals(chapter.id).modify((c) => {
+      const names = { ...(c.lineNames ?? {}) };
+      if (name.trim() && name.trim() !== l.label) names[l.id] = name.trim();
+      else delete names[l.id];
+      c.lineNames = names;
+    });
+  const toggleDrill = (l: Line) =>
+    db.chapters.where('id').equals(chapter.id).modify((c) => {
+      const s = new Set(c.skipLines ?? []);
+      if (s.has(l.id)) s.delete(l.id);
+      else s.add(l.id);
+      c.skipLines = [...s];
+    });
+
+  return (
+    <div className="page">
+      <header className="page-header">
+        <button type="button" className="icon-btn" onClick={() => navigate(`/course/${chapter.courseId}`)} aria-label="Back to hive">‹</button>
+        <div className="reader-title">
+          {course?.name && <span className="reader-hive">{course.name}</span>}
+          <h1 className="comb-heading">{chapter.title}</h1>
+        </div>
+        <span className="icon-btn" aria-hidden="true" />
+      </header>
+      <p className="muted small hive-sub">
+        {lines.length} line{lines.length === 1 ? '' : 's'}
+        {drilled ? ` · ${learned} / ${drilled} learned` : ' · not drilled'}
+      </p>
+
+      <div className="row comb-actions">
+        <button type="button" className="primary" onClick={() => navigate(`/train/comb/${chapter.id}`)} disabled={!drilled}>Train this comb</button>
+        <button type="button" onClick={() => navigate(`/read/${chapter.id}/root`)}>Read whole study</button>
+      </div>
+
+      {lines.length > 6 && (
+        <input
+          type="search"
+          className="wide"
+          placeholder="Find a line: name or moves (e.g. Nf6 Ng5)"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          aria-label="Find a line"
+        />
+      )}
+
+      <ol className="comb-lines line-rows" aria-label={`Lines in ${chapter.title}`}>
+        {lines.filter(matches).map((l) => {
+          const s = states[lines.indexOf(l)];
+          return (
+            <li key={l.id}>
+              {editing === l.id ? (
+                <form
+                  className="row line-edit"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void rename(l, String(new FormData(e.currentTarget).get('name') ?? ''));
+                    setEditing(undefined);
+                  }}
+                >
+                  <input name="name" defaultValue={l.name} autoFocus aria-label={`Name for line ${l.number}`} />
+                  <button type="submit">Save</button>
+                </form>
+              ) : (
+                <div className="line-row-wrap">
+                  <button type="button" className="comb-line" onClick={() => navigate(`/line/${chapter.id}/${encodeURIComponent(l.id)}`)}>
+                    <span className={`line-dot${s ? ` dot-${s}` : ''}`} aria-hidden="true">{l.number}</span>
+                    <span className="comb-line-text">
+                      <span className="card-title">{l.name}</span>
+                      <span className="card-sub">
+                        {!l.trainable ? 'reading only' : skipped.has(l.id) ? 'not drilled' : s === 'learned' ? 'learned' : s === 'due' ? 'due for review' : s === 'new' ? 'not learned yet' : 'not drilled'}
+                        {l.name !== l.label ? ` · ${l.label}` : ''}
+                      </span>
+                    </span>
+                  </button>
+                  {l.trainable && (
+                    <button
+                      type="button"
+                      className={`drill-btn${skipped.has(l.id) ? ' off' : ''}`}
+                      onClick={() => toggleDrill(l)}
+                      aria-pressed={!skipped.has(l.id)}
+                      aria-label={`Drill line ${l.number}`}
+                      title={skipped.has(l.id) ? 'Not drilled: tap to drill this line' : 'Drilled: tap to stop drilling this line'}
+                    >
+                      {skipped.has(l.id) ? 'Skip' : 'Drill'}
+                    </button>
+                  )}
+                  <button type="button" className="icon-btn small-text" onClick={() => setEditing(l.id)} aria-label={`Rename line ${l.number}`}>✎</button>
+                </div>
+              )}
+            </li>
+          );
+        })}
+        {lines.filter(matches).length === 0 && <li className="muted small line-edit">No line matches.</li>}
+      </ol>
+      <p className="muted small">
+        Name a line by tapping ✎, or in Lichess by writing [Line: name] in the comment on the move where it branches.
+        Tap Drill to switch a line between drilled and not drilled; skipped lines stay here to read and keep their progress.
+      </p>
+    </div>
+  );
+}
