@@ -216,7 +216,7 @@ h2 { font-size: 17px; margin: 8px 0 0; }
 /* Fixed toolbar at the bottom of the reader screens. */
 .toolbar {
   flex: none; display: flex; justify-content: space-around; gap: 2px;
-  padding: 4px 4px max(6px, var(--safe-bottom)); border-top: 1px solid var(--line); background: var(--bg);
+  padding: 4px 4px max(6px, calc(var(--safe-bottom) - 20px)); border-top: 1px solid var(--line); background: var(--bg);
 }
 .tool {
   flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -623,3 +623,16 @@ div.shot-full { aspect-ratio: 3 / 4; }
 .dot-due { color: var(--honey-deep); border-color: var(--honey); }
 .dot-learned { color: var(--bg); background: var(--honey-deep); border-color: var(--honey-deep); }
 .line-rows .comb-line { min-height: 60px; padding: 10px 4px 10px 16px; }
+
+/* ---------- temporary screen check (Settings › About) ---------- */
+:root[data-screen-check], :root[data-screen-check] body {
+  background: repeating-linear-gradient(45deg, #e0245e 0 8px, #ffd1dc 8px 16px) !important;
+}
+:root[data-screen-check] .toolbar { outline: 2px solid #1d6fe0; outline-offset: -2px; }
+.sc-frame { position: fixed; inset: 0; border: 3px dashed #1d6fe0; pointer-events: none; z-index: 2000; }
+.sc-panel {
+  position: fixed; left: 8px; right: 8px; top: 38%; z-index: 2001; padding: 8px 10px; border-radius: 10px;
+  background: rgba(0, 0, 0, .82); color: #fff; font: 12px/1.45 ui-monospace, Menlo, monospace; pointer-events: none;
+}
+.sc-panel b { color: #ffd27a; font-weight: 600; }
+.sc-panel button { pointer-events: auto; margin-top: 6px; min-height: 0; padding: 4px 10px; font-size: 12px; background: #333; color: #fff; border-color: #666; }
