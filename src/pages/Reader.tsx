@@ -140,7 +140,7 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
     setGhost(undefined);
     setHint([]);
     setPlay({ frontier: currentId });
-    setFeedback({ kind: 'info', text: 'Forage: play your moves on the board. The text follows you.' });
+    setFeedback({ kind: 'info', text: 'Practice: play your moves on the board. The text follows you. Nothing is scheduled; use Train for that.' });
   };
   const stopPlay = () => {
     setPlay(undefined);
@@ -246,10 +246,6 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
   const prevCh = chIndex > 0 ? siblings![chIndex - 1] : undefined;
   const nextCh = siblings && chIndex >= 0 && chIndex < siblings.length - 1 ? siblings[chIndex + 1] : undefined;
   const pathLen = currentId === 'root' ? 0 : pathTo(idx, currentId).length;
-  const atLineEnd = !ghost && !nextOf(currentId) && !!line;
-  const nextLineOrComb = line && lineNo < lines.length - 1
-    ? { label: 'Next line', go: () => openLine(lines[lineNo + 1]) }
-    : line && nextCh ? { label: 'Next comb', go: () => navigate(`/read/${nextCh.id}`) } : undefined;
   const toggleWhole = () => {
     setPlay(undefined);
     setFeedback(undefined);
@@ -276,7 +272,7 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
             {line ? <><span className="line-num">Line {line.number}/{lines.length}</span> {line.name}</> : <>Whole study · {lines.length} lines</>} <span aria-hidden="true">▾</span>
           </span>
         </button>
-        <button type="button" className="icon-btn small-text" onClick={() => navigate(`/train/comb/${chapter.id}`)} title="Train this comb">Train</button>
+        <span className="icon-btn" aria-hidden="true" />
       </header>
 
       {drawer && (
@@ -427,6 +423,7 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
               {line && lineNo === lines.length - 1 && nextCh && (
                 <button type="button" className="primary" onClick={() => navigate(`/read/${nextCh.id}`)}>Next comb</button>
               )}
+              <button type="button" onClick={() => navigate(`/train/comb/${chapter.id}`)}>Train this comb</button>
               <button type="button" onClick={stopPlay}>Back to reading</button>
             </div>
           )}
@@ -444,10 +441,8 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
         ] : [
           { label: 'Start', icon: Icon.start, onClick: () => select('root'), disabled: pathLen === 0 && !ghost },
           { label: 'Back', icon: Icon.back, onClick: stepBack, disabled: !ghost && pathLen === 0 },
-          atLineEnd && nextLineOrComb
-            ? { label: nextLineOrComb.label, icon: Icon.skip, onClick: nextLineOrComb.go }
-            : { label: 'Next', icon: Icon.next, onClick: stepForward, disabled: !ghost && !nextOf(currentId) },
-          { label: 'Forage', icon: Icon.forage, onClick: startPlay, disabled: !nextOf(currentId), primary: true, title: 'Forage: play along and learn this line' },
+          { label: 'Next', icon: Icon.next, onClick: stepForward, disabled: !ghost && !nextOf(currentId) },
+          { label: 'Practice', icon: Icon.forage, onClick: startPlay, disabled: !nextOf(currentId), primary: true, title: 'Practice: play your moves along this line (nothing is scheduled)' },
           { label: 'Flip', icon: Icon.flip, onClick: () => setFlipped(!flipped) },
           { label: 'Engine', icon: Icon.engine, onClick: toggleEngine, pressed: engineOn, title: 'Stockfish evaluation (runs on this phone)' },
         ]}

@@ -262,7 +262,7 @@ h2 { font-size: 17px; margin: 8px 0 0; }
 }
 .inline-move.active { background: var(--current-bg); }
 .inline-bad { text-decoration: underline wavy var(--bad); text-underline-offset: 3px; }
-.done-actions { display: flex; gap: 8px; justify-content: center; margin: 8px 0; }
+.done-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 8px 0; }
 
 /* Landscape / iPad: board left, text right */
 @media (min-aspect-ratio: 1/1) and (min-width: 700px) {
