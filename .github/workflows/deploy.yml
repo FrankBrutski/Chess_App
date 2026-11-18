@@ -11,8 +11,10 @@ on:
 permissions:
   contents: read
 
+# Keyed on the event too: a pull-request run that starts just after its PR merges can report
+# github.ref as main, and must never cancel the real deploy from the push to main.
 concurrency:
-  group: pages-${{ github.ref }}
+  group: pages-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -29,12 +31,12 @@ jobs:
       - run: npm test
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:
           path: dist
 
   deploy:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     permissions:
