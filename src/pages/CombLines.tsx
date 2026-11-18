@@ -19,6 +19,7 @@ export function CombLines({ chapterId }: { chapterId: string }) {
   );
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState<string>();
+  const [menu, setMenu] = useState<string>();
 
   if (chapter === undefined) return <div className="page"><p className="muted">Loading…</p></div>;
   if (chapter === null) return <div className="page"><p>Comb not found.</p></div>;
@@ -69,8 +70,13 @@ export function CombLines({ chapterId }: { chapterId: string }) {
       </header>
       <p className="muted small hive-sub">
         {lines.length} line{lines.length === 1 ? '' : 's'}
-        {drilled ? ` · ${learned} / ${drilled} learned` : ' · not drilled'}
+        {drilled ? ` · ${learned} of ${drilled} learned` : ' · not drilled'}
       </p>
+      {drilled > 0 && (
+        <div className="progress-bar" role="progressbar" aria-label="Lines learned" aria-valuemin={0} aria-valuemax={drilled} aria-valuenow={learned}>
+          <i style={{ width: `${(learned / drilled) * 100}%` }} />
+        </div>
+      )}
 
       <div className="row comb-actions">
         <button type="button" className="primary" onClick={() => navigate(`/train/comb/${chapter.id}`)} disabled={!drilled}>Train this comb</button>
@@ -95,15 +101,18 @@ export function CombLines({ chapterId }: { chapterId: string }) {
             <li key={l.id}>
               {editing === l.id ? (
                 <form
-                  className="row line-edit"
+                  className="line-edit"
                   onSubmit={(e) => {
                     e.preventDefault();
                     void rename(l, String(new FormData(e.currentTarget).get('name') ?? ''));
                     setEditing(undefined);
                   }}
                 >
-                  <input name="name" defaultValue={l.name} autoFocus aria-label={`Name for line ${l.number}`} />
-                  <button type="submit">Save</button>
+                  <div className="row">
+                    <input name="name" defaultValue={l.name} autoFocus aria-label={`Name for line ${l.number}`} />
+                    <button type="submit">Save</button>
+                  </div>
+                  <p className="muted small">Leave it empty to use the moves. In Lichess you can also write [Line: name] in the comment on the move where the line branches.</p>
                 </form>
               ) : (
                 <div className="line-row-wrap">
@@ -117,19 +126,25 @@ export function CombLines({ chapterId }: { chapterId: string }) {
                       </span>
                     </span>
                   </button>
+                  <button
+                    type="button"
+                    className="more-btn"
+                    onClick={() => setMenu(menu === l.id ? undefined : l.id)}
+                    aria-expanded={menu === l.id}
+                    aria-label={`More for line ${l.number}`}
+                  >
+                    ⋯
+                  </button>
+                </div>
+              )}
+              {menu === l.id && editing !== l.id && (
+                <div className="line-menu">
+                  <button type="button" onClick={() => { setMenu(undefined); setEditing(l.id); }}>Rename</button>
                   {l.trainable && (
-                    <button
-                      type="button"
-                      className={`drill-btn${skipped.has(l.id) ? ' off' : ''}`}
-                      onClick={() => toggleDrill(l)}
-                      aria-pressed={!skipped.has(l.id)}
-                      aria-label={`Drill line ${l.number}`}
-                      title={skipped.has(l.id) ? 'Not drilled: tap to drill this line' : 'Drilled: tap to stop drilling this line'}
-                    >
-                      {skipped.has(l.id) ? 'Skip' : 'Drill'}
+                    <button type="button" onClick={() => { setMenu(undefined); void toggleDrill(l); }}>
+                      {skipped.has(l.id) ? 'Drill this line' : 'Skip this line'}
                     </button>
                   )}
-                  <button type="button" className="icon-btn small-text" onClick={() => setEditing(l.id)} aria-label={`Rename line ${l.number}`}>✎</button>
                 </div>
               )}
             </li>
@@ -137,10 +152,6 @@ export function CombLines({ chapterId }: { chapterId: string }) {
         })}
         {lines.filter(matches).length === 0 && <li className="muted small line-edit">No line matches.</li>}
       </ol>
-      <p className="muted small">
-        Name a line by tapping ✎, or in Lichess by writing [Line: name] in the comment on the move where it branches.
-        Tap Drill to switch a line between drilled and not drilled; skipped lines stay here to read and keep their progress.
-      </p>
     </div>
   );
 }
