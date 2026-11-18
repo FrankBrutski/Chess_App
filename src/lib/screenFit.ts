@@ -9,6 +9,7 @@ export function startScreenFit() {
     (navigator as Navigator & { standalone?: boolean }).standalone === true ||
     window.matchMedia?.('(display-mode: standalone)').matches;
   if (!standalone) return;
+  document.documentElement.setAttribute('data-standalone', '');
   const measure = () => {
     const long = Math.max(screen.width, screen.height);
     const short = Math.min(screen.width, screen.height);
