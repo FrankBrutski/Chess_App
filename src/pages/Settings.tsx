@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { screenCheckOn, setScreenCheck } from '../components/ScreenCheck';
+import { getTopGap, setTopGap } from '../lib/screenFit';
 import { exportBackupZip, importBackupFile, requestPersistence } from '../lib/db';
 import { goBack } from '../router';
 import { getStingEngineCheck, getStingHoney, getStingNew, setStingEngineCheck, setStingHoney, setStingNew } from '../lib/prefs';
@@ -36,6 +37,7 @@ export function Settings() {
   const [theme, setThemeState] = useState(getTheme());
   const [text, setText] = useState(getTextPrefs());
   const [updateMsg, setUpdateMsg] = useState<string>();
+  const [topGap, setTopGapState] = useState(getTopGap);
   const [stingHoney, setStingHoneyState] = useState(getStingHoney);
   const [stingNew, setStingNewState] = useState(getStingNew);
   const [stingCheck, setStingCheckState] = useState(getStingEngineCheck);
@@ -267,6 +269,11 @@ export function Settings() {
             Check for updates
           </button>
           {updateMsg && <p className="muted small">{updateMsg}</p>}
+          <div className="row top-gap-row">
+            <span className="small">Space under the status bar: <b>{topGap} px</b></span>
+            <button type="button" onClick={() => setTopGapState(setTopGap(topGap - 2))} aria-label="Less space">−</button>
+            <button type="button" onClick={() => setTopGapState(setTopGap(topGap + 2))} aria-label="More space">+</button>
+          </div>
           <button type="button" className="wide" onClick={() => setScreenCheck(!screenCheckOn())}>
             Screen check (shows screen sizes for fixing the layout)
           </button>
