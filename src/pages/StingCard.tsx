@@ -46,7 +46,7 @@ export function StingCard({ id }: { id: string }) {
   const src = card.source;
 
   return (
-    <div className="page">
+    <div className={`page${step === 'view' ? ' with-toolbar' : ''}`}>
       <header className="page-header">
         <button type="button" className="icon-btn" onClick={() => navigate(back)} aria-label="Back to Stings">‹</button>
         <h1>{card.title ?? (step === 'crop' ? 'Crop the board' : step === 'setup' ? 'Set up the position' : STATUS_LABEL[card.status])}</h1>

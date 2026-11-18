@@ -9,6 +9,7 @@ import { deleteNode, editNode, lineStart, playMove, promote, readyProblems, TAG_
 import { getAutoLink, getBoldNotation, getEngineOn, setEngineOn } from '../lib/prefs';
 import { Board } from './Board';
 import { ChapterText, type Ghost } from './ChapterText';
+import { Icon, Toolbar } from './Toolbar';
 import { EnginePanel } from './EnginePanel';
 
 const TAGS: LineTag[] = ['best', 'also', 'refute', 'idea'];
@@ -73,6 +74,7 @@ export function StingExplorer({ card }: { card: Sting }) {
   const forward = () => { const n = node.children[0]; if (n) { setGhost(undefined); setCurrentId(n.id); } };
   const saveNote = () => { if (note.trim() !== node.comments.join('\n\n').trim()) commit(editNode(root, node.id, { comment: note })); };
 
+  const [flipped, setFlipped] = useState(false);
   const boardFen = ghost ? ghost.line[ghost.index].fen : node.fen;
   const turn = boardFen.split(' ')[1] === 'b' ? 'black' : 'white';
 
@@ -80,7 +82,7 @@ export function StingExplorer({ card }: { card: Sting }) {
     <div className="stack explorer">
       <Board
         fen={boardFen}
-        orientation={orientation}
+        orientation={flipped ? (orientation === 'white' ? 'black' : 'white') : orientation}
         lastMove={ghost ? ghost.line[ghost.index].uci : (node as MoveNode).uci}
         shapes={ghost ? [] : node.shapes}
         movable={ghost ? undefined : { color: turn, dests: destsOf(node.fen) }}
@@ -93,13 +95,13 @@ export function StingExplorer({ card }: { card: Sting }) {
           <button type="button" className="link-btn" onClick={() => setGhost(undefined)}>Back to the card</button>
         </div>
       )}
-      <div className="controls">
-        <button type="button" onClick={() => { setGhost(undefined); setCurrentId('root'); }} aria-label="Start">⏮</button>
-        <button type="button" onClick={back} disabled={node.id === 'root' && !ghost} aria-label="Back">◀</button>
-        <button type="button" onClick={forward} disabled={!node.children.length} aria-label="Forward">▶</button>
-        <button type="button" className={`engine-toggle${engineOn ? ' on' : ''}`} aria-pressed={engineOn}
-          onClick={() => { setEngineOn(!engineOn); setEngineOnState(!engineOn); }} title="Stockfish (runs on this phone)">SF</button>
-      </div>
+      <Toolbar fixed items={[
+        { label: 'Start', icon: Icon.start, onClick: () => { setGhost(undefined); setCurrentId('root'); }, disabled: node.id === 'root' && !ghost },
+        { label: 'Back', icon: Icon.back, onClick: back, disabled: node.id === 'root' && !ghost },
+        { label: 'Next', icon: Icon.next, onClick: forward, disabled: !node.children.length },
+        { label: 'Flip', icon: Icon.flip, onClick: () => setFlipped(!flipped) },
+        { label: 'Engine', icon: Icon.engine, onClick: () => { setEngineOn(!engineOn); setEngineOnState(!engineOn); }, pressed: engineOn, title: 'Stockfish (runs on this phone)' },
+      ]} />
       {engineOn && <EnginePanel fen={boardFen} paused={false} onPlayLine={ghost ? undefined : (line) => setGhost({ line, index: 0, baseId: currentId, source: 'engine' })} />}
       <p className="muted small center">Play moves on the board to add lines. {turn === 'white' ? 'White' : 'Black'} to move.</p>
 

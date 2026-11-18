@@ -13,6 +13,7 @@ import { getAutoLink, getBoldNotation, getEngineOn, getLineOrder, getShowMarkers
 import { destsOf, sanOfBoardMove, stripSan } from '../lib/boardMove';
 import { EnginePanel } from '../components/EnginePanel';
 import { LineText } from '../components/LineText';
+import { Icon, Toolbar } from '../components/Toolbar';
 import { lineThrough, splitLines, type Line } from '../lib/lines';
 
 type Feedback = { kind: 'good' | 'bad' | 'info' | 'done'; text: string } | undefined;
@@ -31,6 +32,7 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
   const [mode, setMode] = useState<'line' | 'study'>(startNodeId ? 'study' : 'line');
   const [lineKey, setLineKey] = useState(lineId ?? 'main');
   const [drawer, setDrawer] = useState(false);
+  const [flipped, setFlipped] = useState(false);
   // Transpositions: the same position elsewhere in your repertoire.
   const showMarkers = getShowMarkers();
   const allHives = useLiveQuery(() => (showMarkers ? db.courses.toArray() : []), [showMarkers]);
@@ -244,83 +246,57 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
   const prevCh = chIndex > 0 ? siblings![chIndex - 1] : undefined;
   const nextCh = siblings && chIndex >= 0 && chIndex < siblings.length - 1 ? siblings[chIndex + 1] : undefined;
   const pathLen = currentId === 'root' ? 0 : pathTo(idx, currentId).length;
+  const atLineEnd = !ghost && !nextOf(currentId) && !!line;
+  const nextLineOrComb = line && lineNo < lines.length - 1
+    ? { label: 'Next line', go: () => openLine(lines[lineNo + 1]) }
+    : line && nextCh ? { label: 'Next comb', go: () => navigate(`/read/${nextCh.id}`) } : undefined;
+  const toggleWhole = () => {
+    setPlay(undefined);
+    setFeedback(undefined);
+    setGhost(undefined);
+    if (line) setMode('study');
+    else {
+      setMode('line');
+      const through = lineThrough(lines, currentId);
+      if (through) setLineKey(through.id);
+    }
+  };
 
   return (
     <div className="reader">
+      <div className="reader-top">
       <header className="reader-header">
         <button type="button" className="icon-btn" onClick={() => navigate(`/course/${chapter.courseId}`)} aria-label="Back to hive" title="Back to hive">
           ‹
         </button>
-        <div className="reader-title">
-          <div className="reader-course">{course?.name}</div>
-          <div className="reader-chapter">{chapter.title}</div>
-        </div>
-        <button type="button" className="icon-btn small-text" onClick={() => navigate(`/train/comb/${chapter.id}`)} title="Train this comb">Train</button>
-        <button
-          type="button"
-          className={`engine-toggle${engineOn ? ' on' : ''}`}
-          onClick={toggleEngine}
-          aria-pressed={engineOn}
-          title="Stockfish evaluation (runs on this phone)"
-        >
-          SF
+        <button type="button" className="reader-title title-btn" onClick={() => setDrawer(!drawer)} aria-expanded={drawer} title="Pick a line">
+          <span className="reader-chapter">{chapter.title}</span>
+          <span className="reader-course">
+            {line ? <><span className="line-num">Line {line.number}/{lines.length}</span> {line.name}</> : <>{course?.name} · whole study</>} <span aria-hidden="true">▾</span>
+          </span>
         </button>
+        <button type="button" className="icon-btn small-text" onClick={() => navigate(`/train/comb/${chapter.id}`)} title="Train this comb">Train</button>
       </header>
 
-      <div className="line-bar">
-        {line ? (
-          <>
-            <button
-              type="button"
-              className="icon-btn"
-              disabled={lineNo <= 0 && !prevCh}
-              onClick={() => (lineNo > 0 ? openLine(lines[lineNo - 1]) : prevCh && navigate(`/read/${prevCh.id}`))}
-              aria-label={lineNo > 0 ? 'Previous line' : 'Previous comb'}
-              title={lineNo > 0 ? 'Previous line' : prevCh ? `Previous comb: ${prevCh.title}` : undefined}
-            >‹</button>
-            <button type="button" className="line-pick" onClick={() => setDrawer(!drawer)} aria-expanded={drawer}>
-              <span className="line-num">Line {line.number}/{lines.length}</span>
-              <span className="line-name">{line.name}</span>
-              <span aria-hidden="true">▾</span>
-            </button>
-            <button
-              type="button"
-              className="icon-btn"
-              disabled={lineNo >= lines.length - 1 && !nextCh}
-              onClick={() => (lineNo < lines.length - 1 ? openLine(lines[lineNo + 1]) : nextCh && navigate(`/read/${nextCh.id}`))}
-              aria-label={lineNo < lines.length - 1 ? 'Next line' : 'Next comb'}
-              title={lineNo < lines.length - 1 ? 'Next line' : nextCh ? `Next comb: ${nextCh.title}` : undefined}
-            >›</button>
-          </>
-        ) : (
-          <button type="button" className="line-pick" onClick={() => setDrawer(!drawer)} aria-expanded={drawer}>
-            <span className="line-name">Whole study · {lines.length} lines</span>
-            <span aria-hidden="true">▾</span>
-          </button>
-        )}
-        <button
-          type="button"
-          className="icon-btn small-text"
-          onClick={() => {
-            setPlay(undefined);
-            setFeedback(undefined);
-            setGhost(undefined);
-            if (line) setMode('study');
-            else {
-              setMode('line');
-              const through = lineThrough(lines, currentId);
-              if (through) setLineKey(through.id);
-            }
-          }}
-          title={line ? 'Show the whole study with every line' : 'Show one line at a time'}
-        >
-          {line ? 'Whole' : 'Lines'}
-        </button>
-      </div>
       {drawer && (
         <LineList
           lines={lines}
           current={line}
+          nav={
+            <div className="row drawer-nav">
+              <button
+                type="button"
+                disabled={!line || (lineNo <= 0 && !prevCh)}
+                onClick={() => { setDrawer(false); if (lineNo > 0) openLine(lines[lineNo - 1]); else if (prevCh) navigate(`/read/${prevCh.id}`); }}
+              >‹ {line && lineNo <= 0 && prevCh ? 'Previous comb' : 'Previous line'}</button>
+              <button type="button" onClick={() => { setDrawer(false); toggleWhole(); }}>{line ? 'Whole study' : 'One line at a time'}</button>
+              <button
+                type="button"
+                disabled={!line || (lineNo >= lines.length - 1 && !nextCh)}
+                onClick={() => { setDrawer(false); if (lineNo < lines.length - 1) openLine(lines[lineNo + 1]); else if (nextCh) navigate(`/read/${nextCh.id}`); }}
+              >{line && lineNo >= lines.length - 1 && nextCh ? 'Next comb' : 'Next line'} ›</button>
+            </div>
+          }
           skipped={new Set(chapter.skipLines ?? [])}
           onOpen={openLine}
           onRename={renameLine}
@@ -335,12 +311,13 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
           onClose={() => setDrawer(false)}
         />
       )}
+      </div>
 
       <div className="reader-body">
         <div className="board-pane">
           <Board
             fen={boardFen}
-            orientation={chapter.orientation}
+            orientation={flipped ? (chapter.orientation === 'white' ? 'black' : 'white') : chapter.orientation}
             lastMove={lastMove}
             shapes={shapes}
             hintShapes={hint}
@@ -377,21 +354,10 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
               </button>
             </div>
           )}
-          <div className="controls">
-            <button type="button" onClick={() => select('root')} disabled={!!play} aria-label="Start">⏮</button>
-            <button type="button" onClick={stepBack} disabled={!ghost && pathLen === 0} aria-label="Back">◀</button>
-            <button type="button" onClick={stepForward} aria-label="Forward">▶</button>
-            {play ? (
-              <>
-                <button type="button" onClick={showHint} disabled={!awaitingUser}>Hint</button>
-                <button type="button" className="primary" onClick={stopPlay}>Stop</button>
-              </>
-            ) : (
-              <button type="button" className="primary" onClick={startPlay} disabled={!nextOf(currentId)} title="Forage: play along and learn this line">
-                Forage
-              </button>
-            )}
-          </div>
+        </div>
+
+        <div className="text-pane sheet" ref={textRef}>
+          <div className="sheet-handle" aria-hidden="true" />
           {branches.length > 0 && (
             <div className="branches">
               {branches.map((b) => (
@@ -401,9 +367,6 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
               ))}
             </div>
           )}
-        </div>
-
-        <div className="text-pane" ref={textRef}>
           {line ? (
             <LineText
               key={line.id}
@@ -469,12 +432,32 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
           <div className="text-end-spacer" />
         </div>
       </div>
+      <Toolbar
+        items={play ? [
+          { label: 'Back', icon: Icon.back, onClick: stepBack, disabled: !ghost && pathLen === 0 },
+          { label: 'Next', icon: Icon.next, onClick: stepForward },
+          { label: 'Hint', icon: Icon.hint, onClick: showHint, disabled: !awaitingUser },
+          { label: 'Stop', icon: Icon.stop, onClick: stopPlay, primary: true },
+          { label: 'Flip', icon: Icon.flip, onClick: () => setFlipped(!flipped) },
+          { label: 'Engine', icon: Icon.engine, onClick: toggleEngine, pressed: engineOn, title: 'Stockfish evaluation (runs on this phone)' },
+        ] : [
+          { label: 'Start', icon: Icon.start, onClick: () => select('root'), disabled: pathLen === 0 && !ghost },
+          { label: 'Back', icon: Icon.back, onClick: stepBack, disabled: !ghost && pathLen === 0 },
+          atLineEnd && nextLineOrComb
+            ? { label: nextLineOrComb.label, icon: Icon.skip, onClick: nextLineOrComb.go }
+            : { label: 'Next', icon: Icon.next, onClick: stepForward, disabled: !ghost && !nextOf(currentId) },
+          { label: 'Forage', icon: Icon.forage, onClick: startPlay, disabled: !nextOf(currentId), primary: true, title: 'Forage: play along and learn this line' },
+          { label: 'Flip', icon: Icon.flip, onClick: () => setFlipped(!flipped) },
+          { label: 'Engine', icon: Icon.engine, onClick: toggleEngine, pressed: engineOn, title: 'Stockfish evaluation (runs on this phone)' },
+        ]}
+      />
     </div>
   );
 }
 
-function LineList({ lines, current, skipped, onOpen, onRename, onToggleDrill, onClose }: {
+function LineList({ lines, current, nav, skipped, onOpen, onRename, onToggleDrill, onClose }: {
   lines: Line[];
+  nav?: React.ReactNode;
   current?: Line;
   skipped: Set<string>;
   onOpen: (l: Line) => void;
@@ -494,6 +477,7 @@ function LineList({ lines, current, skipped, onOpen, onRename, onToggleDrill, on
   const shown = lines.filter(matches);
   return (
     <div className="line-drawer">
+      {nav}
       <div className="row">
         <input
           type="search"
