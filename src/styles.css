@@ -18,7 +18,7 @@
   --radius: 12px;
   --safe-top: env(safe-area-inset-top, 0px);
   /* iOS softens and fades a band just below the status bar in installed web apps. Keep text out of that band. */
-  --top-gap: min(var(--top-gap-user, 28px), calc(var(--safe-top) * 100)); /* 0 when there is no status bar overlap */
+  --top-gap: min(var(--top-gap-user, 6px), calc(var(--safe-top) * 100)); /* 0 when there is no status bar overlap */
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   color-scheme: light;
   /* Reading text (Settings → Text). */

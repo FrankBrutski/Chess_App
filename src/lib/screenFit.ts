@@ -4,10 +4,10 @@
  * <html data-short-view> so the bottom toolbar drops its home-indicator padding, which would
  * otherwise be added on top of the strip iOS already keeps. Does nothing in a browser tab.
  */
-const GAP_KEY = 'apiary.topGap';
+const GAP_KEY = 'apiary.topGap.v2'; // v2: new 6px default replaces values saved while tuning
 /** The extra space under the status bar (px), tunable in Settings › About so it can be set on the phone itself. */
 export function getTopGap(): number {
-  try { const v = Number(localStorage.getItem(GAP_KEY)); return localStorage.getItem(GAP_KEY) !== null && Number.isFinite(v) ? v : 28; } catch { return 28; }
+  try { const v = Number(localStorage.getItem(GAP_KEY)); return localStorage.getItem(GAP_KEY) !== null && Number.isFinite(v) ? v : 6; } catch { return 6; }
 }
 export function setTopGap(px: number) {
   const v = Math.max(0, Math.min(48, Math.round(px)));
