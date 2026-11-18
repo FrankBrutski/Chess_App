@@ -5,6 +5,7 @@ import { Library } from './pages/Library';
 import { CoursePage } from './pages/Course';
 import { Reader } from './pages/Reader';
 import { CombLines } from './pages/CombLines';
+import { ScreenCheckOverlay } from './components/ScreenCheck';
 import { requestPersistence } from './lib/db';
 import { UpdateBanner } from './components/UpdateBanner';
 
@@ -27,6 +28,7 @@ export function App() {
     <>
       <Suspense fallback={<div className="page" />}>{route(page, id, sub, sub2)}</Suspense>
       <UpdateBanner />
+      <ScreenCheckOverlay />
     </>
   );
 }

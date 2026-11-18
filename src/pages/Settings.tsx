@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { screenCheckOn, setScreenCheck } from '../components/ScreenCheck';
 import { exportBackupZip, importBackupFile, requestPersistence } from '../lib/db';
 import { goBack } from '../router';
 import { getStingEngineCheck, getStingHoney, getStingNew, setStingEngineCheck, setStingHoney, setStingNew } from '../lib/prefs';
@@ -266,6 +267,9 @@ export function Settings() {
             Check for updates
           </button>
           {updateMsg && <p className="muted small">{updateMsg}</p>}
+          <button type="button" className="wide" onClick={() => setScreenCheck(!screenCheckOn())}>
+            Screen check (shows screen sizes for fixing the layout)
+          </button>
         </div>
       </details>
       <h3 className="set-head">Opening trainer</h3>
