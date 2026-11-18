@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Icon } from '../components/Toolbar';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, today } from '../lib/db';
 import { navigate } from '../router';
@@ -17,7 +18,8 @@ export function TrainPage({ kind, a, b }: { kind?: string; a?: string; b?: strin
     if (kind === 'section' && a && b) return { ...s, hive: a, section: b, comb: '' };
     return s;
   });
-  const [combPreset] = useState(kind === 'comb' ? a : undefined);
+  const [combPreset] = useState(kind === 'comb' || kind === 'line' ? a : undefined);
+  const lineId = kind === 'line' && b ? decodeURIComponent(b) : undefined;
   const update = (s: TrainScope) => { setScopeState(s); setScope(s); };
 
   const hives = useLiveQuery(() => db.courses.toArray(), []);
@@ -72,6 +74,17 @@ export function TrainPage({ kind, a, b }: { kind?: string; a?: string; b?: strin
     if (items.length) setSession({ mode: autoStart, items });
   }, [autoStart, data]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // #/train/line/<comb>/<line> (Train in the reader): learn that line if it is new, else review all of it.
+  const [lineStart, setLineStart] = useState(!!lineId);
+  useEffect(() => {
+    if (!lineStart || !data || session) return;
+    const t = data.lines.find((x) => x.chapterId === a && x.line.id === lineId);
+    if (!t) { if (data.lines.some((x) => x.chapterId === a)) setLineStart(false); return; }
+    setLineStart(false);
+    const fresh = userKeys(t).some((k) => !data.cells.has(k));
+    setSession(fresh ? { mode: 'learn', items: [{ t }] } : { mode: 'review', items: [{ t, ask: new Set(userKeys(t)) }] });
+  }, [lineStart, data]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (session && data) {
     return (
       <TrainSession
@@ -79,7 +92,8 @@ export function TrainPage({ kind, a, b }: { kind?: string; a?: string; b?: strin
         items={session.items}
         chapters={data.chapters}
         cells={data.cells}
-        onExit={() => { setSession(undefined); setReload((r) => r + 1); }}
+        onExit={() => { if (lineId) { navigate(`/line/${a}/${encodeURIComponent(lineId)}`); return; } setSession(undefined); setReload((r) => r + 1); }}
+        exitLabel={lineId ? 'Back to reading' : undefined}
       />
     );
   }
@@ -104,7 +118,7 @@ export function TrainPage({ kind, a, b }: { kind?: string; a?: string; b?: strin
       <header className="page-header">
         <button type="button" className="icon-btn" onClick={() => navigate('/openings')} aria-label="Back">‹</button>
         <h1 className="brand"><HexMark /> Train</h1>
-        <button type="button" className="icon-btn" onClick={() => navigate('/settings')} aria-label="Settings">⚙</button>
+        <button type="button" className="icon-btn" onClick={() => navigate('/settings')} aria-label="Settings">{Icon.settings}</button>
       </header>
 
       <p className="honey-line">

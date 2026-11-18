@@ -27,13 +27,15 @@ interface Props {
   chapters: Map<string, Chapter>;
   cells: Map<string, Cell>;
   onExit: () => void;
+  /** Label for the button on the done screen (default: Back to training). */
+  exitLabel?: string;
 }
 
 type Feedback = { kind: 'good' | 'bad' | 'info' | 'done'; text: string } | undefined;
 
 interface Tally { honey: number; right: number; wrong: number; learned: number; lines: number }
 
-export function TrainSession({ mode, items, chapters, cells: startCells, onExit }: Props) {
+export function TrainSession({ mode, items, chapters, cells: startCells, onExit, exitLabel }: Props) {
   const ladder = useMemo(getLadder, []);
   const policy = useMemo(getMissPolicy, []);
   const retryBack = useMemo(getRetryBack, []);
@@ -198,7 +200,7 @@ export function TrainSession({ mode, items, chapters, cells: startCells, onExit 
       <div className="page">
         <h1>{mode === 'learn' ? 'Learning done' : 'Review done'}</h1>
         <Summary tally={tally} mode={mode} />
-        <button type="button" className="primary wide" onClick={onExit}>Back to training</button>
+        <button type="button" className="primary wide" onClick={onExit}>{exitLabel ?? 'Back to training'}</button>
       </div>
     );
   }

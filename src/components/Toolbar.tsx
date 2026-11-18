@@ -52,4 +52,5 @@ export const Icon = {
   retry: svg(<><path d="M4 12a8 8 0 1 0 2.4-5.7" /><path d="M4 4v4h4" /></>),
   eye: svg(<><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></>),
   skip: svg(<><path d="M5 5l8 7-8 7" /><path d="M19 5v14" /></>),
+  settings: svg(<><path d="M4 7h16" /><path d="M4 12h16" /><path d="M4 17h16" /><circle cx="9" cy="7" r="2.2" fill="var(--bg)" /><circle cx="15" cy="12" r="2.2" fill="var(--bg)" /><circle cx="8" cy="17" r="2.2" fill="var(--bg)" /></>),
 };
