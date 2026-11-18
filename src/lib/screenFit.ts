@@ -14,7 +14,9 @@ export function startScreenFit() {
     const long = Math.max(screen.width, screen.height);
     const short = Math.min(screen.width, screen.height);
     const full = window.innerWidth > window.innerHeight ? short : long;
-    const gap = full - Math.min(window.innerHeight, document.documentElement.clientHeight || window.innerHeight);
+    // innerHeight, not html clientHeight: on iOS 18 the latter reports the short (svh) height even when
+    // the app is drawn to the bottom edge (measured on an iPhone: window 874, client 812, fixed box 874).
+    const gap = full - window.innerHeight;
     if (gap > 8) document.documentElement.setAttribute('data-short-view', '');
     else document.documentElement.removeAttribute('data-short-view');
   };
