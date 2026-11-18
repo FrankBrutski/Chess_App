@@ -18,8 +18,6 @@ interface Props {
   annotations: Map<string, NodeAnnotations>;
   currentId: string;
   ghost?: Ghost;
-  /** Returns false for nodes that are hidden (play-along hides what comes next). */
-  isVisible: (id: string) => boolean;
   collapsed: Set<string>;
   onToggle: (variationFirstId: string) => void;
   onSelect: (id: string) => void;
@@ -81,7 +79,7 @@ export function Comment({ pieces, ghost, onGhost, bold }: { pieces: CommentPiece
 }
 
 function ChapterTextImpl(props: Props) {
-  const { root, annotations, currentId, ghost, isVisible, collapsed, onToggle, onSelect, onGhost, boldNotation } = props;
+  const { root, annotations, currentId, ghost, collapsed, onToggle, onSelect, onGhost, boldNotation } = props;
 
   const moveButton = (n: MoveNode, withNumber: boolean, depth: number) => (
     <button
@@ -135,7 +133,6 @@ function ChapterTextImpl(props: Props) {
     };
     const variation = (p: TreeNode, i: number) => {
       const first = p.children[i];
-      if (!isVisible(first.id)) return;
       flush();
       const isCollapsed = collapsed.has(first.id);
       blocks.push(
@@ -157,13 +154,11 @@ function ChapterTextImpl(props: Props) {
     };
 
     let node = parent.children[startIdx];
-    if (!isVisible(node.id)) return blocks;
     emit(node);
     if (startIdx === 0) for (let i = 1; i < parent.children.length; i++) variation(parent, i);
     while (node.children.length) {
       const p = node;
       node = p.children[0];
-      if (!isVisible(node.id)) break;
       emit(node);
       for (let i = 1; i < p.children.length; i++) variation(p, i);
     }
