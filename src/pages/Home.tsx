@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { Icon } from '../components/Toolbar';
 import { db } from '../lib/db';
 import { navigate } from '../router';
 import { HexMark, StingMark } from '../components/HexMark';
@@ -26,7 +27,7 @@ export function Home() {
     <div className="page home">
       <header className="page-header">
         <h1 className="brand"><HexMark /> Apiary</h1>
-        <button type="button" className="icon-btn" onClick={() => navigate('/settings')} aria-label="Settings">⚙</button>
+        <button type="button" className="icon-btn" onClick={() => navigate('/settings')} aria-label="Settings">{Icon.settings}</button>
       </header>
       <div className="doors">
         <button type="button" className="door" onClick={() => navigate('/openings')}>

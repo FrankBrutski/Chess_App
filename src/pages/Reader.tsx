@@ -134,12 +134,6 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
   }, [currentId, ghost, play?.frontier]);
 
   // ----- Play-along -----
-  const startPlay = () => {
-    setGhost(undefined);
-    setHint([]);
-    setPlay({ frontier: currentId });
-    setFeedback({ kind: 'info', text: 'Practice: play your moves on the board. The text follows you. Nothing is scheduled; use Train for that.' });
-  };
   const stopPlay = () => {
     setPlay(undefined);
     setFeedback(undefined);
@@ -242,14 +236,8 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
         <button type="button" className="icon-btn" onClick={() => navigate(`/comb/${chapter.id}`)} aria-label="Back to the lines" title="Back to the lines">
           ‹
         </button>
-        <div className="reader-title">
-          <span className="reader-chapter">{chapter.title}</span>
-          <span className="reader-course">
-            {course?.name && <>{course.name} · </>}
-            {line ? <><span className="line-num">Line {line.number}/{lines.length}</span> {line.name}</> : <>Whole study · {lines.length} lines</>}
-          </span>
-        </div>
-        <span className="icon-btn" aria-hidden="true" />
+        <h1 className="reader-hive-title">{course?.name ?? chapter.title}</h1>
+        <button type="button" className="icon-btn" onClick={() => navigate('/settings')} aria-label="Settings">{Icon.settings}</button>
       </header>
 
       </div>
@@ -299,6 +287,10 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
 
         <div className="text-pane sheet" ref={textRef}>
           <div className="sheet-handle" aria-hidden="true" />
+          <div className="sheet-title">
+            <h2>{chapter.title}</h2>
+            <p>{line ? <><span className="line-num">Line {line.number}/{lines.length}</span> {line.name}</> : <>Whole study · {lines.length} lines</>}</p>
+          </div>
           {branches.length > 0 && (
             <div className="branches">
               {branches.map((b) => (
@@ -386,7 +378,7 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
           { label: 'Start', icon: Icon.start, onClick: () => select('root'), disabled: pathLen === 0 && !ghost },
           { label: 'Back', icon: Icon.back, onClick: stepBack, disabled: !ghost && pathLen === 0 },
           { label: 'Next', icon: Icon.next, onClick: stepForward, disabled: !ghost && !nextOf(currentId) },
-          { label: 'Practice', icon: Icon.forage, onClick: startPlay, disabled: !nextOf(currentId), primary: true, title: 'Practice: play your moves along this line (nothing is scheduled)' },
+          { label: 'Train', icon: Icon.forage, onClick: () => line && navigate(`/train/line/${chapter.id}/${encodeURIComponent(line.id)}`), disabled: !line?.trainable || !!chapter.skipLines?.includes(line.id), primary: true, title: 'Train this line: learn it if new, else review it (schedules it like the trainer)' },
           { label: 'Flip', icon: Icon.flip, onClick: () => setFlipped(!flipped) },
           { label: 'Engine', icon: Icon.engine, onClick: toggleEngine, pressed: engineOn, title: 'Stockfish evaluation (runs on this phone)' },
         ]}

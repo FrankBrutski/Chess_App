@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Icon } from '../components/Toolbar';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../lib/db';
 import { navigate } from '../router';
@@ -59,7 +60,7 @@ export function Library() {
           <button type="button" className="icon-btn small-text" onClick={() => setReorder(!reorder)}>{reorder ? 'Done' : 'Reorder'}</button>
         )}
         <button type="button" className="icon-btn small-text" onClick={() => navigate('/board')} aria-label="Master board" title="Master board: look up a position">Board</button>
-        <button type="button" className="icon-btn" onClick={() => navigate('/settings')} aria-label="Settings">⚙</button>
+        <button type="button" className="icon-btn" onClick={() => navigate('/settings')} aria-label="Settings">{Icon.settings}</button>
       </header>
       {(hives?.length ?? 0) > 0 && (
         <button type="button" className="primary wide train-cta" onClick={() => navigate('/train')}>
