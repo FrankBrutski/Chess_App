@@ -14,7 +14,12 @@ export interface GhostMove {
 }
 
 export type CommentPiece =
-  | { kind: 'text'; text: string }
+  | {
+      kind: 'text';
+      text: string;
+      /** In a <...> aside: the first numbered move that could not be played, and why (the rest stays text). */
+      stuck?: string;
+    }
   | {
       kind: 'move';
       text: string;
@@ -106,21 +111,51 @@ export function parseCommentMoves(
     if (m.index > last) pieces.push(...plain(text.slice(last, m.index)));
     const inner = (m[1] ?? m[2]).trim();
     const res = parseBracket(inner, candidates);
-    pieces.push(...('reason' in res ? [{ kind: 'bad' as const, text: inner, reason: res.reason }] : res.pieces));
+    if ('pieces' in res) pieces.push(...res.pieces);
+    // Some authors wrap a whole aside in <...> ("<If 10...Re8 then 11. Be2 ...>"): that is prose,
+    // not a move list, so show it as text with its playable moves linked instead of flagging it.
+    // Only from this position and the ones before it: a hypothetical line in an aside never jumps ahead.
+    else if (isProse(inner)) pieces.push(...scan(inner, candidates.slice(0, candidates.length - ahead.length), false, true));
+    else pieces.push({ kind: 'bad', text: inner, reason: res.reason });
     last = m.index + m[0].length;
   }
   if (last < text.length) pieces.push(...plain(text.slice(last)));
   return pieces.filter((p) => p.kind !== 'text' || p.text.length > 0);
 }
 
-function scan(text: string, candidates: TreeNode[], forced: boolean): CommentPiece[] {
+const plyNum = (ply: number) => (ply % 2 ? `${Math.ceil(ply / 2)}.` : `${ply / 2}…`);
+
+/**
+ * `aside`: text from a <...> aside. Once a numbered move in it can't be played (a typo, or a line
+ * we can't follow), the rest is left as text: later moves likely continue that line, and linking
+ * them from some other position would show the wrong board.
+ */
+function scan(text: string, candidates: TreeNode[], forced: boolean, aside = false): CommentPiece[] {
   const tokens = tokenize(text).map(trimToken);
   const pieces: CommentPiece[] = [];
   let cursor = 0;
   let i = 0;
+  // Every line read so far, newest first: "(24. Ra1?? Rd8 …) 24...Re8" goes back to an earlier one.
+  const chains: Chain[] = [];
+  let lastEnd = -1; // token right after the last line read
   while (i < tokens.length) {
-    const run = tryRun(tokens, i, candidates, forced);
-    if (!run) { i++; continue; }
+    const chain = chains[0];
+    const run = tryRun(tokens, i, candidates, forced, chains);
+    if (!run) {
+      const t = tokens[i];
+      const numbered = NUM_SAN.exec(t.text) ?? (NUM.test(t.text) && tokens[i + 1] && SAN.test(tokens[i + 1].text) ? NUM.exec(t.text) : null);
+      const goesOn = i === lastEnd && SAN.test(t.text); // "… 17. Qe3 Qh5" where Qh5 can't be played
+      if (aside && ((numbered && (NUM.test(t.text) || SAN.test(numbered[3]))) || goesOn)) {
+        const last = chain?.line[chain.line.length - 1];
+        const move = goesOn && !numbered && last ? `${plyNum(last.ply + 1)}${t.text}` : NUM.test(t.text) ? `${t.text}${tokens[i + 1].text}` : t.text;
+        const where = last ? `after ${plyNum(last.ply)}${last.san}` : 'from this position or the moves before it';
+        pieces.push({ kind: 'text', text: text.slice(cursor), stuck: `${move.replace(/\.{3}/, '…')} can't be played ${where}` });
+        return pieces.filter((p) => p.kind !== 'text' || p.text.length > 0);
+      }
+      i++;
+      continue;
+    }
+    chains.unshift({ line: run.line, baseFen: run.baseFen, baseId: run.baseId, basePly: run.basePly });
     if (run.startChar > cursor) pieces.push({ kind: 'text', text: text.slice(cursor, run.startChar) });
     run.spans.forEach((span, k) => {
       if (k > 0 && span.start > run.spans[k - 1].end) {
@@ -137,6 +172,7 @@ function scan(text: string, candidates: TreeNode[], forced: boolean): CommentPie
     });
     cursor = run.spans[run.spans.length - 1].end;
     i = run.nextToken;
+    lastEnd = i;
   }
   if (cursor < text.length) pieces.push({ kind: 'text', text: text.slice(cursor) });
   return pieces;
@@ -148,10 +184,14 @@ interface Run {
   line: GhostMove[];
   baseFen: string;
   baseId: string;
+  basePly: number;
   nextToken: number;
 }
 
-function tryRun(tokens: Token[], i: number, candidates: TreeNode[], forced: boolean): Run | undefined {
+/** The last line read in this text: prose like "If 10...Re8 then 11. Be2 … After 11...Bxc3" carries on from it. */
+interface Chain { line: GhostMove[]; baseFen: string; baseId: string; basePly: number }
+
+function tryRun(tokens: Token[], i: number, candidates: TreeNode[], forced: boolean, chains: Chain[] = []): Run | undefined {
   const first = tokens[i];
   let wantPly: number | undefined;
   let firstSan: string | undefined;
@@ -171,6 +211,25 @@ function tryRun(tokens: Token[], i: number, candidates: TreeNode[], forced: bool
     j = i + 1;
   } else return undefined;
 
+  // A numbered move that fits the line just read continues that line (the sentence goes on with it).
+  for (const chain of chains) {
+    if (wantPly === undefined || wantPly <= chain.basePly || wantPly > chain.basePly + chain.line.length) continue;
+    const k = wantPly - chain.basePly; // moves of the chain kept before this one
+    const pos = positionOf(chain.line[k - 1].fen);
+    const res = pos && playRun(tokens, i, j, firstSan, pos, wantPly);
+    if (res) {
+      const prefix = chain.line.slice(0, k);
+      return {
+        startChar,
+        line: [...prefix, ...res.line],
+        spans: res.spans.map((s) => ({ ...s, moveIndex: s.moveIndex + k })),
+        nextToken: res.nextToken,
+        baseFen: chain.baseFen,
+        baseId: chain.baseId,
+        basePly: chain.basePly,
+      };
+    }
+  }
   // Without a move number, a run must start from the current position, and a lone
   // pawn move ("a4" in a sentence) is not linked unless the author used [[...]].
   for (const base of candidates) {
@@ -181,7 +240,7 @@ function tryRun(tokens: Token[], i: number, candidates: TreeNode[], forced: bool
     const res = playRun(tokens, i, j, firstSan, pos, base.ply);
     if (!res) continue;
     if (!forced && wantPly === undefined && res.line.length < 2 && !/^[KQRBNO]/.test(firstSan)) continue;
-    return { startChar, ...res, baseFen: base.fen, baseId: base.id };
+    return { startChar, ...res, baseFen: base.fen, baseId: base.id, basePly: base.ply };
   }
   return undefined;
 }
@@ -237,6 +296,15 @@ function playRun(tokens: Token[], i: number, j: number, firstSan: string, pos: C
   return { line, spans, nextToken: k };
 }
 
+
+/** Words in it that can't be part of a move list ("If", "then", "Black's"…), so it's an aside, not moves. */
+const WORD = /^[(“"']*[A-Za-z][a-z]+[A-Za-z'’]*[)”"',;:.!?]*$/;
+function isProse(text: string): boolean {
+  return bracketTokens(text).some((t) => {
+    const w = t.text.replace(/[,;:.!?)”"']+$/, '');
+    return WORD.test(t.text) && !/^[KQRBN][a-hx]/.test(w) && !SAN.test(w) && !NUM_SAN.test(w) && !SKIP_TOKEN.test(w) && !/^(e\.?p|ep)$/i.test(w);
+  });
+}
 
 // ---------- Bracketed lines: a small PGN movetext parser with (nested side lines) ----------
 
@@ -365,7 +433,7 @@ function parseBracketFrom(toks: BTok[], base: TreeNode): { marks: Mark[] } | { f
       const move = pos && parseSan(pos, cleanSan(san.replace(/[!?]+$/, '')));
       if (!pos || !move) {
         ok = false;
-        reason = SAN_LIKE.test(san) || /^[KQRBN]/.test(san)
+        reason = SAN.test(san.replace(/[!?]+$/, ''))
           ? `${num(plyBefore + 1)}${san} is not legal ${after(line)}`
           : `"${t.text}" is not a move (${after(line)})`;
         return;

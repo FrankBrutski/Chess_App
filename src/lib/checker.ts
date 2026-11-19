@@ -70,6 +70,16 @@ export function checkChapter(p: ParsedChapter, opts: ParseOptions & { lines?: Sp
     const raw = [...n.comments, ...('startingComments' in n ? n.startingComments : [])];
     for (const pieces of [...(a?.before ?? []), ...(a?.after ?? [])]) {
       for (const piece of pieces) {
+        if (piece.kind === 'text' && piece.stuck) {
+          issues.push({
+            severity: 'warning',
+            kind: 'bad-bracket-line',
+            message: `${inLine(n)}note at ${label(n)}: ${piece.stuck}, so the moves after it in that aside aren't playable.`,
+            detail: `“${piece.text.slice(0, 80)}${piece.text.length > 80 ? '…' : ''}” · moves to here: ${movesTo(n, parentOf)}`,
+            nodeId: n.id,
+            key: `stuck|${'key' in n ? n.key : 'root'}|${piece.stuck}`,
+          });
+        }
         if (piece.kind === 'bad') {
           issues.push({
             severity: 'warning',
