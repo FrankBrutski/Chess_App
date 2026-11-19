@@ -13,6 +13,12 @@ import { EnginePanel } from '../components/EnginePanel';
 import { LineText } from '../components/LineText';
 import { Icon, Toolbar } from '../components/Toolbar';
 import { splitLines, type Line } from '../lib/lines';
+import { destsOf, positionOf, sanOfBoardMove, stripSan } from '../lib/boardMove';
+import { parseSan, makeSanAndPlay } from 'chessops/san';
+import { makeFen } from 'chessops/fen';
+import { makeUci } from 'chessops/util';
+import type { Key } from 'chessground/types';
+import type { GhostMove } from '../lib/commentMoves';
 
 export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapterId: string; startNodeId?: string; lineId?: string; lineNodeId?: string }) {
   const chapter = useLiveQuery(() => db.chapters.get(chapterId), [chapterId]);
@@ -117,6 +123,30 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
     setCurrentId(l.shared > 0 ? l.nodes[l.shared - 1].id : 'root');
     textRef.current?.scrollTo({ top: 0 });
   };
+  // With the engine open, the board is an analysis board: play any legal move and the evaluation follows.
+  // A move that is the next study move just steps forward; anything else plays on from here as a side line,
+  // and Back takes those moves back one by one, to where you started.
+  const turn = boardFen.split(' ')[1] === 'b' ? 'black' : 'white';
+  const movable = engineOn ? { color: turn as 'white' | 'black', dests: destsOf(boardFen) } : undefined;
+  const playOnBoard = (orig: Key, dest: Key) => {
+    const san = sanOfBoardMove(boardFen, orig as Key, dest as Key);
+    if (!san) return;
+    if (!ghost) {
+      const next = nextOf(currentId) ?? node.children.find((c) => stripSan(c.san) === stripSan(san));
+      if (next && stripSan(next.san) === stripSan(san)) { setCurrentId(next.id); return; }
+    }
+    const pos = positionOf(boardFen);
+    const move = pos && parseSan(pos, san);
+    if (!pos || !move) return;
+    const uci = makeUci(move);
+    const played = makeSanAndPlay(pos, move);
+    const prior: GhostMove[] = ghost ? ghost.line.slice(0, ghost.index + 1) : [];
+    const ply = ghost ? ghost.line[ghost.index].ply + 1 : ('ply' in node ? node.ply : 0) + 1;
+    const g: GhostMove = { san: played, uci, fen: makeFen(pos.toSetup()), ply };
+    // Same move as the line already shown: just step along it.
+    if (ghost && ghost.line[ghost.index + 1]?.uci === uci) { setGhost({ ...ghost, index: ghost.index + 1 }); return; }
+    setGhost({ line: [...prior, g], index: prior.length, baseId: ghost?.baseId ?? currentId, source: 'board' });
+  };
   const pathLen = currentId === 'root' ? 0 : pathTo(idx, currentId).length;
   return (
     <div className="reader">
@@ -139,15 +169,9 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
             lastMove={lastMove}
             shapes={shapes}
             check={/[+#]$/.test(ghost ? ghost.line[ghost.index].san : (node as MoveNode).san ?? '')}
+            movable={movable}
+            onMove={playOnBoard}
           />
-          {ghost && (
-            <div className="ghost-bar">
-              <span>{ghost.source === 'engine' ? 'Engine line' : 'Line from the text'}</span>
-              <button type="button" className="link-btn" onClick={() => { setCurrentId(ghost.baseId); setGhost(undefined); }}>
-                Back to the study
-              </button>
-            </div>
-          )}
           {engineOn && (
             <EnginePanel
               fen={boardFen}
