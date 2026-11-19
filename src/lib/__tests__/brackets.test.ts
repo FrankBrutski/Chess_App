@@ -181,8 +181,17 @@ describe('bracketed lines in sentences', () => {
   it('treats an empty "<>" as plain text', () => {
     expect(isBad(parse('see <> here'))).toBe(false);
   });
-  it('flags prose inside brackets', () => {
-    expect(isBad(parse('<see the note above>'))).toBe(true);
+  it('shows a bracketed aside (prose) as text, linking the moves it can play', () => {
+    const p = parse('<see the note above>');
+    expect(isBad(p)).toBe(false);
+    expect(shown(p)).toBe('see the note above');
+    const q = parse('<If 12. Nbd2 Bd7 then White is fine.>');
+    expect(isBad(q)).toBe(false);
+    expect(moves(q)).toEqual(['12. Nbd2', 'Bd7']);
+    expect(shown(q)).toBe('If 12. Nbd2 Bd7 then White is fine.');
+  });
+  it('still flags a bracket of moves with a typo', () => {
+    expect(isBad(parse('<12. Nbd2 Bxe>'))).toBe(true);
   });
 });
 
@@ -195,3 +204,27 @@ describe('checker on stray brackets', () => {
   });
 });
 
+
+describe('asides wrapped in <...> (Four Pawns Attack, early deviations, line 22)', () => {
+  const pgn = `[ChapterName "Early deviations"]\n[Orientation "black"]\n\n1. d4 Nf6 2. c4 g6 3. Nc3 Bg7 4. e4 d6 5. f4 c5 6. dxc5 O-O 7. cxd6 exd6 8. Be2 Qa5 9. Bf3 Nxe4 10. Bxe4 Bxc3+ { Here we have to be even faster and more forceful.\n<If the immediate 10...Re8 then 11. Be2 solves all of White's problems and re-defends the Bishop. After 11...Bxc3 12. Bxc3 Rxe4+ 13. Ne2 Qc5> } 11. bxc3 { <White is hoping for 11...Qxc3+?? 12. Bd2 Qxc4 13. Bf3 Re8 14. Ne2 and White has successfully held the back rank and escaped.> } *`;
+
+  it('links 10...Re8 from the position before it, inline in the text, and is not flagged as illegal', async () => {
+    const { parseChapters } = await import('../pgn');
+    const { annotateChapter } = await import('../annotations');
+    const { checkChapter } = await import('../checker');
+    const [c] = parseChapters(pgn);
+    const ann = annotateChapter(c.root);
+    const all = [...ann.values()].flatMap((a) => a.after.flat());
+    const re8 = all.find((p) => p.kind === 'move' && p.text === '10...Re8');
+    expect(re8 && re8.kind === 'move' && re8.line[0].san).toBe('Re8');
+    expect(all.some((p) => p.kind === 'bad')).toBe(false);
+    // The second aside plays as one line: 11...Qxc3+ 12. Bd2 Qxc4 13. Bf3 Re8 14. Ne2.
+    const ne2 = all.find((p) => p.kind === 'move' && p.text === '14. Ne2');
+    expect(ne2 && ne2.kind === 'move' && ne2.line.map((g) => g.san)).toEqual(['Qxc3+', 'Bd2', 'Qxc4', 'Bf3', 'Re8+', 'Ne2']);
+    // 11. Be2 really can't be played (the e4 bishop is pinned by the rook on e8): that, and only that, is reported.
+    const issues = checkChapter(c).filter((i) => i.kind === 'bad-bracket-line');
+    expect(issues.map((i) => i.message)).toEqual([
+      "Line 1: note at 10…Bxc3+: 11.Be2 can't be played after 10…Re8, so the moves after it in that aside aren't playable.",
+    ]);
+  });
+});
