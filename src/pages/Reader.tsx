@@ -222,10 +222,10 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
       </div>
       <Toolbar
         items={[
+          { label: 'Engine', icon: Icon.engine, onClick: toggleEngine, pressed: engineOn, title: 'Stockfish evaluation (runs on this phone)' },
+          { label: 'Train', icon: Icon.forage, onClick: () => line && navigate(`/train/line/${chapter.id}/${encodeURIComponent(line.id)}`), disabled: !line?.trainable || !!chapter.skipLines?.includes(line.id), primary: true, title: 'Train this line: learn it if new, else review it (schedules it like the trainer)' },
           { label: 'Back', icon: Icon.back, onClick: stepBack, disabled: !ghost && pathLen === 0 },
           { label: 'Next', icon: Icon.next, onClick: stepForward, disabled: !ghost && !nextOf(currentId) },
-          { label: 'Train', icon: Icon.forage, onClick: () => line && navigate(`/train/line/${chapter.id}/${encodeURIComponent(line.id)}`), disabled: !line?.trainable || !!chapter.skipLines?.includes(line.id), primary: true, title: 'Train this line: learn it if new, else review it (schedules it like the trainer)' },
-          { label: 'Engine', icon: Icon.engine, onClick: toggleEngine, pressed: engineOn, title: 'Stockfish evaluation (runs on this phone)' },
         ]}
       />
     </div>
