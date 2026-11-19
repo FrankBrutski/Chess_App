@@ -7,6 +7,7 @@ import { HexMark } from '../components/HexMark';
 import { loadTrainData } from '../lib/training';
 import { lineState, userKeys } from '../lib/srs';
 import { groupHives, moveInList, tierName } from '../lib/hives';
+import { getHiveFilter, setHiveFilter, type HiveFilter } from '../lib/prefs';
 import type { Course } from '../lib/model';
 
 export function Library() {
@@ -18,6 +19,8 @@ export function Library() {
     return m;
   }, []);
   const [reorder, setReorder] = useState(false);
+  const [filter, setFilterState] = useState(getHiveFilter);
+  const setFilter = (f: HiveFilter) => { setFilterState(f); setHiveFilter(f); };
   // Due moves in lines you drill (skipped lines, combs, sections and hives don't count).
   // Per hive: lines learned / drillable lines, and moves due.
   const stats = useLiveQuery(async () => {
@@ -49,7 +52,13 @@ export function Library() {
     });
   };
 
-  const groups = groupHives(hives ?? []);
+  const allTiers = [...new Set((hives ?? []).map((h) => h.tier))].sort((a, b) => a - b);
+  const shown = (hives ?? []).filter(
+    (h) => (filter.color === 'all' || h.color === filter.color) && (!filter.tiers.length || filter.tiers.includes(h.tier)),
+  );
+  const groups = groupHives(shown);
+  const toggleTier = (t: number) =>
+    setFilter({ ...filter, tiers: filter.tiers.includes(t) ? filter.tiers.filter((x) => x !== t) : [...filter.tiers, t] });
 
   return (
     <div className={`page${due ? ' has-fab' : ''}`}>
@@ -62,6 +71,25 @@ export function Library() {
         <button type="button" className="icon-btn small-text" onClick={() => navigate('/board')} aria-label="Master board" title="Master board: look up a position">Board</button>
         <button type="button" className="icon-btn" onClick={() => navigate('/settings')} aria-label="Settings">{Icon.settings}</button>
       </header>
+      {(hives?.length ?? 0) > 1 && (
+        <div className="hive-filter" role="group" aria-label="Filter hives">
+          <div className={`seg seg-${filter.color}`} role="radiogroup" aria-label="Colour">
+            <span className="seg-thumb" aria-hidden="true" />
+            {(['all', 'white', 'black'] as const).map((c) => (
+              <button key={c} type="button" role="radio" aria-checked={filter.color === c} aria-label={c === 'all' ? 'Both colours' : c === 'white' ? 'White' : 'Black'}
+                onClick={() => setFilter({ ...filter, color: c })}>
+                {c === 'all' ? 'Both' : <span className={`color-dot ${c}`} />}
+              </button>
+            ))}
+          </div>
+          {allTiers.length > 1 && allTiers.map((t) => (
+            <button key={t} type="button" className={`chip${filter.tiers.includes(t) ? ' on' : ''}`} aria-pressed={filter.tiers.includes(t)} onClick={() => toggleTier(t)}>
+              {t === 1 ? 'Main' : t === 2 ? '2nd' : t === 3 ? '3rd' : tierName(t)}
+            </button>
+          ))}
+        </div>
+      )}
+      {!!hives?.length && !shown.length && <p className="muted center">No hives match this filter.</p>}
       {hives?.length === 0 && (
         <div className="empty">
           <p>No hives yet.</p>
