@@ -14,7 +14,7 @@ export function CombLines({ chapterId }: { chapterId: string }) {
   const course = useLiveQuery(async () => (chapter ? db.courses.get(chapter.courseId) : undefined), [chapter?.courseId]);
   const cells = useLiveQuery(async () => new Map<string, Cell>((await db.cells.toArray()).map((c) => [c.key, c])), []);
   const lines = useMemo(
-    () => (chapter ? splitLines(chapter.root, chapter.orientation, { names: chapter.lineNames, order: getLineOrder() }) : []),
+    () => (chapter ? splitLines(chapter.root, chapter.orientation, { names: chapter.lineNames, order: getLineOrder(), custom: chapter.lineOrder }) : []),
     [chapter],
   );
   const [q, setQ] = useState('');
@@ -56,6 +56,16 @@ export function CombLines({ chapterId }: { chapterId: string }) {
       else delete names[l.id];
       c.lineNames = names;
     });
+  /** Swap a line with its neighbour; the whole order is saved, so it survives re-syncs. */
+  const move = (l: Line, by: -1 | 1) => {
+    const ids = lines.map((x) => x.id);
+    const i = ids.indexOf(l.id);
+    const j = i + by;
+    if (i < 0 || j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+    return db.chapters.where('id').equals(chapter.id).modify((c) => { c.lineOrder = ids; });
+  };
+  const resetOrder = () => db.chapters.where('id').equals(chapter.id).modify((c) => { delete c.lineOrder; });
   const toggleDrill = (l: Line) =>
     db.chapters.where('id').equals(chapter.id).modify((c) => {
       const s = new Set(c.skipLines ?? []);
@@ -171,10 +181,15 @@ export function CombLines({ chapterId }: { chapterId: string }) {
               {menu === l.id && editing !== l.id && (
                 <div className="line-menu">
                   <button type="button" onClick={() => { setMenu(undefined); setEditing(l.id); }}>Rename</button>
+                  <button type="button" onClick={() => void move(l, -1)} disabled={l.number === 1}>Move up</button>
+                  <button type="button" onClick={() => void move(l, 1)} disabled={l.number === lines.length}>Move down</button>
                   {l.trainable && (
                     <button type="button" onClick={() => { setMenu(undefined); void toggleDrill(l); }}>
                       {skipped.has(l.id) ? 'Drill this line' : 'Skip this line'}
                     </button>
+                  )}
+                  {chapter.lineOrder && (
+                    <button type="button" onClick={() => { setMenu(undefined); void resetOrder(); }}>Reset line order</button>
                   )}
                 </div>
               )}

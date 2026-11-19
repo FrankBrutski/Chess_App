@@ -41,7 +41,7 @@ export function combSkipped(c: Chapter, hives: Map<string, Course> | Course[]): 
 
 export function trainLinesOf(chapters: Chapter[], mainLinesOnly: boolean, hives: Course[] = []): TrainLine[] {
   return chapters.filter((c) => !combSkipped(c, hives)).flatMap((c) =>
-    splitLines(c.root, c.orientation, { names: c.lineNames, order: getLineOrder() })
+    splitLines(c.root, c.orientation, { names: c.lineNames, order: getLineOrder(), custom: c.lineOrder })
       .filter((l) => l.trainable && !c.skipLines?.includes(l.id) && (!mainLinesOnly || l.id === 'main'))
       .map((line) => ({ chapterId: c.id, hiveId: c.courseId, combTitle: c.title, color: c.orientation, line })),
   );

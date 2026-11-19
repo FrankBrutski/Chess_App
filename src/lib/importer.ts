@@ -129,6 +129,7 @@ function keepSettings(old: Chapter | undefined): Partial<Chapter> {
   if (!old) return {};
   const out: Partial<Chapter> = {};
   if (old.lineNames) out.lineNames = old.lineNames;
+  if (old.lineOrder) out.lineOrder = old.lineOrder;
   if (old.skipLines?.length) out.skipLines = old.skipLines;
   if (old.skip) out.skip = true;
   return out;

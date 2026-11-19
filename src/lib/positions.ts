@@ -55,7 +55,7 @@ export function buildIndex(hives: Course[], chapters: Chapter[], opts: Pick<Spli
   for (const chapter of chapters) {
     const hive = hiveById.get(chapter.courseId);
     if (!hive) continue;
-    const lines = splitLines(chapter.root, chapter.orientation, { names: chapter.lineNames, order: opts.order });
+    const lines = splitLines(chapter.root, chapter.orientation, { names: chapter.lineNames, order: opts.order, custom: chapter.lineOrder });
     const linesThrough = new Map<string, Line[]>();
     for (const l of lines) for (const n of l.nodes) {
       const list = linesThrough.get(n.id);

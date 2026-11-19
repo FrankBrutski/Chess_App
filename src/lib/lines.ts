@@ -61,6 +61,23 @@ export interface SplitOptions {
    * order the study lists them, and the main move's line comes last. 'mainFirst': the main line first.
    */
   order?: 'mainLast' | 'mainFirst';
+  /** Your own order for this comb, by line id (Move up / Move down). Overrides `order`; lines not in it keep their place. */
+  custom?: string[];
+}
+
+/** Put items in `custom` order; an item not listed goes right after the item before it in the natural order. */
+export function applyCustomOrder<T extends object>(items: T[], idOf: (t: T) => string, custom?: string[]): T[] {
+  if (!custom?.length) return items;
+  const byId = new Map(items.map((t) => [idOf(t), t]));
+  const out = custom.filter((id) => byId.has(id)).map((id) => byId.get(id)!);
+  const placed = new Set(out.map(idOf));
+  items.forEach((t, i) => {
+    if (placed.has(idOf(t))) return;
+    const prev = i > 0 ? out.indexOf(items[i - 1]) : -1;
+    out.splice(prev + 1, 0, t);
+    placed.add(idOf(t));
+  });
+  return out;
 }
 
 export function splitLines(root: RootNode, color: 'white' | 'black', opts: SplitOptions = {}): Line[] {
@@ -87,7 +104,8 @@ export function splitLines(root: RootNode, color: 'white' | 'black', opts: Split
     }
   }
   const main = paths.find((p) => p.branch === -1)?.nodes ?? [];
-  return paths.map((p, i) => {
+  const pathId = (p: (typeof paths)[number]) => (p.branch < 0 ? 'main' : p.nodes[p.branch].key);
+  return applyCustomOrder(paths, pathId, opts.custom).map((p, i, paths) => {
     const prev = paths[i - 1]?.nodes;
     let shared = 0;
     if (prev) while (shared < prev.length && shared < p.nodes.length && prev[shared] === p.nodes[shared]) shared++;
@@ -101,7 +119,7 @@ export function splitLines(root: RootNode, color: 'white' | 'black', opts: Split
       label = off < b ? `${fmtMove(p.nodes[off])} ${b > off + 1 ? '… ' : ''}${own[0]}` : own.join(' ');
     }
     // Stable id: the key of its own branch move, so it doesn't depend on the order or on other lines.
-    const id = b < 0 ? 'main' : p.nodes[b].key;
+    const id = pathId(p);
     const branchNode = b < 0 ? undefined : p.nodes[b];
     const after = b < 0 ? undefined : p.nodes[b + 1];
     // A [Line: …] note on the branch move, or on the move right after it (the two moves of the label).
