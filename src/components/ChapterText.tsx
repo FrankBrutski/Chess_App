@@ -56,7 +56,7 @@ export function Comment({ pieces, ghost, onGhost, bold }: { pieces: CommentPiece
         if (p.kind === 'text') return <BrokenText key={i} text={p.text} bold={bold} />;
         if (p.kind === 'bad') {
           return (
-            <span key={i} className="inline-bad" title="These moves are not legal from here">
+            <span key={i} className="inline-bad" title={p.reason ? `Not playable: ${p.reason}` : 'These moves are not legal from here'}>
               {p.text}
             </span>
           );

@@ -2,11 +2,28 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, chaptersOf } from '../lib/db';
 import { navigate } from '../router';
 import { IssueList } from '../components/IssueList';
+import { checkChapter } from '../lib/checker';
+import { getAutoLink, getLineOrder } from '../lib/prefs';
+import type { Chapter, Issue } from '../lib/model';
+
+/**
+ * Re-run the checks that only need the saved moves and notes, so the list has today's wording
+ * and detail without a re-sync. Moves the import could not read are not saved, so those stay as stored.
+ */
+function freshIssues(c: Chapter): Issue[] {
+  const kept = (c.issues ?? []).filter((i) => i.kind === 'unreadable-move' || i.kind === 'empty-chapter');
+  try {
+    const now = checkChapter({ title: c.title, orientation: c.orientation, root: c.root, unreadable: [] }, { auto: getAutoLink(), lines: { names: c.lineNames, order: getLineOrder() } });
+    return [...kept, ...now.filter((i) => i.kind !== 'empty-chapter')];
+  } catch {
+    return c.issues ?? [];
+  }
+}
 
 export function IssuesPage({ courseId }: { courseId: string }) {
   const course = useLiveQuery(() => db.courses.get(courseId), [courseId]);
   const chapters = useLiveQuery(() => chaptersOf(courseId), [courseId]);
-  const withIssues = chapters?.filter((c) => c.issues?.length) ?? [];
+  const withIssues = (chapters ?? []).map((c) => ({ c, issues: freshIssues(c) })).filter((x) => x.issues.length);
 
   return (
     <div className="page">
@@ -19,10 +36,10 @@ export function IssuesPage({ courseId }: { courseId: string }) {
         {course?.name}. Fix these in Lichess, then sync or upload again; fixed issues drop off this list.
       </p>
       {chapters && withIssues.length === 0 && <p>No open issues.</p>}
-      {withIssues.map((c) => (
+      {withIssues.map(({ c, issues }) => (
         <section key={c.id} className="stack">
           <h2>{c.title}</h2>
-          <IssueList issues={c.issues!} onOpen={(i) => navigate(`/read/${c.id}/${i.nodeId}`)} />
+          <IssueList issues={issues} onOpen={(i) => navigate(`/read/${c.id}/${i.nodeId}`)} />
         </section>
       ))}
     </div>

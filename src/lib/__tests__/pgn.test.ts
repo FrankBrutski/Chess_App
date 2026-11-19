@@ -150,7 +150,23 @@ describe('import checker', () => {
     expect(hasBlockingError(issues)).toBe(false);
     const b = checkChapter(broken);
     expect(b[0].severity).toBe('error');
-    expect(b[0].message).toMatch(/Main line stops after 1…e5/);
+    expect(b[0].message).toBe('Line 1: main line stops after 1…e5: 2.Ke3 is not a legal move there, so the rest of the main line is missing.');
+    expect(b[0].detail).toBe('Moves to here: 1.e4 e5');
+    const bad = issues.find((i) => i.kind === 'bad-bracket-line')!;
+    expect(bad.message).toBe('Line 1: bracketed line in the note at 1.e4: 1…Qxh8 is not legal after 1.e4.');
+    expect(bad.detail).toBe('<1...Qxh8> · moves to here: 1.e4');
+  });
+
+  it('names the illegal move inside a bracketed line', async () => {
+    const { checkChapter } = await import('../checker');
+    const pgn = `[ChapterName "T"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bc4 { Plan: <3...Nf6 4. Ng5 d5 5. Bxf7> } Bc5 *`;
+    const [c] = parseChapters(pgn);
+    const bad = checkChapter(c).find((i) => i.kind === 'bad-bracket-line')!;
+    expect(bad.message).toContain('5.Bxf7 is not legal after 4…d5');
+    expect(bad.detail).toContain('moves to here: 1.e4 e5 2.Nf3 Nc6 3.Bc4');
+    const pgn2 = `[ChapterName "T"]\n\n1. e4 e5 2. Nf3 { <2...Nc6 4. Bb5> } Nc6 *`;
+    const bad2 = checkChapter(parseChapters(pgn2)[0]).find((i) => i.kind === 'bad-bracket-line')!;
+    expect(bad2.message).toContain('4.Bb5 has the wrong move number: after 2…Nc6 the next move is 3.');
   });
 });
 

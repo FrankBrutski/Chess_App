@@ -26,7 +26,7 @@ export type CommentPiece =
       depth?: number;
     }
   /** A <...> line the author marked as moves but which is not legal here. */
-  | { kind: 'bad'; text: string };
+  | { kind: 'bad'; text: string; /** What is wrong, e.g. "13.Bxf7 is not legal after 12…a5". */ reason?: string };
 
 // Move number like "12.", "12...", "12…" optionally directly followed by a SAN.
 // Dots: "12." White; "12...", "12..", "12…", "12.…" Black.
@@ -105,7 +105,8 @@ export function parseCommentMoves(
   while ((m = marker.exec(text))) {
     if (m.index > last) pieces.push(...plain(text.slice(last, m.index)));
     const inner = (m[1] ?? m[2]).trim();
-    pieces.push(...(parseBracket(inner, candidates) ?? [{ kind: 'bad' as const, text: inner }]));
+    const res = parseBracket(inner, candidates);
+    pieces.push(...('reason' in res ? [{ kind: 'bad' as const, text: inner, reason: res.reason }] : res.pieces));
     last = m.index + m[0].length;
   }
   if (last < text.length) pieces.push(...plain(text.slice(last)));
@@ -259,9 +260,9 @@ const SKIP_TOKEN = /^(\$\d+|[!?]{1,2}|[+\-=±∓⩲⩱∞/]{1,3}|1-0|0-1|1\/2-1\
  * after the closing parenthesis the outer line carries on. Returns undefined if any
  * move is not legal, so the caller can flag the whole line.
  */
-function parseBracket(text: string, candidates: TreeNode[]): CommentPiece[] | undefined {
+function parseBracket(text: string, candidates: TreeNode[]): { pieces: CommentPiece[] } | { reason: string } {
   const toks = bracketTokens(text);
-  if (!toks.length) return undefined;
+  if (!toks.length) return { reason: 'the brackets are empty' };
   let wantPly: number | undefined;
   const first = toks[0].text;
   const m1 = NUM_SAN.exec(first) ?? NUM.exec(first);
@@ -272,10 +273,15 @@ function parseBracket(text: string, candidates: TreeNode[]): CommentPiece[] | un
   // Without one: the current position, then the position before the last move
   // (an alternative to the move just played).
   const pool = wantPly !== undefined ? candidates : candidates.slice(0, 2);
+  let best: BracketFail | undefined;
   for (const base of pool) {
     if (wantPly !== undefined && base.ply !== wantPly) continue;
-    const marks = parseBracketFrom(toks, base);
-    if (!marks) continue;
+    const res = parseBracketFrom(toks, base);
+    if ('fail' in res) {
+      if (!best || res.fail.progress > best.progress) best = res.fail;
+      continue;
+    }
+    const marks = res.marks;
     const pieces: CommentPiece[] = [];
     let cursor = 0;
     for (const mk of marks) {
@@ -292,17 +298,30 @@ function parseBracket(text: string, candidates: TreeNode[]): CommentPiece[] | un
       cursor = mk.end;
     }
     if (cursor < text.length) pieces.push({ kind: 'text', text: text.slice(cursor) });
-    return pieces;
+    return { pieces };
   }
-  return undefined;
+  if (best) return { reason: best.reason };
+  if (wantPly !== undefined) return { reason: `it starts at ${num(wantPly + 1)}, but this line never reaches that move` };
+  return { reason: 'it does not start with a move' };
 }
+
+/** "13." for White's 13th move, "12…" for Black's: the number of the move with this ply. */
+const num = (ply: number) => (ply % 2 === 1 ? `${Math.ceil(ply / 2)}.` : `${ply / 2}…`);
+
+interface BracketFail { reason: string; /** Moves read before it went wrong (the attempt that got furthest wins). */ progress: number }
 
 const SAN_LIKE = /[a-h][1-8]|O-O|0-0/;
 
 interface Mark { start: number; end: number; line: GhostMove[]; index: number; depth: number }
 
-function parseBracketFrom(toks: BTok[], base: TreeNode): Mark[] | undefined {
+function parseBracketFrom(toks: BTok[], base: TreeNode): { marks: Mark[] } | { fail: BracketFail } {
   const marks: Mark[] = [];
+  let reason = '';
+  /** Where the line stands: "after 12…a5", or the position the brackets start from. */
+  const after = (line: GhostMove[]) => {
+    if (line.length) { const g = line[line.length - 1]; return `after ${num(g.ply)}${g.san}`; }
+    return 'id' in base && base.id !== 'root' ? `after ${num(base.ply)}${(base as { san?: string }).san ?? ''}` : 'at the start';
+  };
   const posAt = (line: GhostMove[]) => {
     return positionOf(line.length ? line[line.length - 1].fen : base.fen);
   };
@@ -315,13 +334,13 @@ function parseBracketFrom(toks: BTok[], base: TreeNode): Mark[] | undefined {
     let pendingNum: { start: number; ply: number } | undefined;
     while (i < toks.length && ok) {
       const t = toks[i];
-      if (t.text === ')') { if (depth === 0) ok = false; return; }
+      if (t.text === ')') { if (depth === 0) { ok = false; reason = `there is a ")" with no "(" ${after(line)}`; } return; }
       if (t.text === '(') {
-        if (line.length === prefix.length) { ok = false; return; } // nothing to branch from yet
+        if (line.length === prefix.length) { ok = false; reason = `a "(" side line opens before any move ${after(line)}`; return; } // nothing to branch from yet
         i++;
         parseLine(line.slice(0, -1), depth + 1);
         if (!ok) return;
-        if (toks[i]?.text !== ')') { ok = false; return; }
+        if (toks[i]?.text !== ')') { ok = false; reason = 'a "(" side line is never closed with ")"'; return; }
         i++;
         continue;
       }
@@ -336,10 +355,21 @@ function parseBracketFrom(toks: BTok[], base: TreeNode): Mark[] | undefined {
       if (ns) { san = ns[3]; start = t.start; wantPly = plyFromNumber(+ns[1], ns[2]); }
       pendingNum = undefined;
       const plyBefore = base.ply + line.length;
-      if (wantPly !== undefined && wantPly !== plyBefore) { ok = false; return; }
+      const written = `${wantPly !== undefined ? num(wantPly + 1) : ''}${san}`;
+      if (wantPly !== undefined && wantPly !== plyBefore) {
+        ok = false;
+        reason = `${written} has the wrong move number: ${after(line)} the next move is ${num(plyBefore + 1)}`;
+        return;
+      }
       const pos = posAt(line);
       const move = pos && parseSan(pos, cleanSan(san.replace(/[!?]+$/, '')));
-      if (!pos || !move) { ok = false; return; }
+      if (!pos || !move) {
+        ok = false;
+        reason = SAN_LIKE.test(san) || /^[KQRBN]/.test(san)
+          ? `${num(plyBefore + 1)}${san} is not legal ${after(line)}`
+          : `"${t.text}" is not a move (${after(line)})`;
+        return;
+      }
       const uci = makeUci(move);
       const s = makeSanAndPlay(pos, move);
       line.push({ san: s, uci, fen: makeFen(pos.toSetup()), ply: plyBefore + 1 });
@@ -347,10 +377,12 @@ function parseBracketFrom(toks: BTok[], base: TreeNode): Mark[] | undefined {
       marks.push({ start, end: t.start + t.text.replace(/[,;:.]+$/, '').length, line, index: line.length - 1, depth });
       i++;
     }
-    if (pendingNum) ok = false;
+    if (pendingNum && ok) { ok = false; reason = 'it ends with a move number but no move'; }
   };
 
   parseLine([], 0);
-  if (!ok || i < toks.length || !marks.length) return undefined;
-  return marks;
+  if (ok && i < toks.length) { ok = false; reason = `there is a ")" with no "("`; }
+  if (ok && !marks.length) { ok = false; reason = 'there are no moves in it'; }
+  if (!ok) return { fail: { reason, progress: marks.length } };
+  return { marks };
 }
