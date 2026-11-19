@@ -657,3 +657,5 @@ div.shot-full { aspect-ratio: 3 / 4; }
 .train-done { margin: 0 0 12px; }
 .train-done p { margin: 0 0 6px; }
 .issue-detail { display: block; margin-top: 2px; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.hive-edit-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin: 0 0 12px; }
+.hive-edit-actions .confirm { width: 100%; }

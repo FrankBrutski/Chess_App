@@ -166,6 +166,15 @@ export function Library() {
             {(hives?.length ?? 0) > 1 && (
               <button type="button" className="wide" onClick={() => { setReorder(true); setSheet(false); }}>Reorder hives</button>
             )}
+            {(hives?.length ?? 0) > 0 && (
+              <label className="field">
+                <span>Edit a hive</span>
+                <select value="" onChange={(e) => e.target.value && navigate(`/course/${e.target.value}/edit`)} aria-label="Edit a hive">
+                  <option value="">Choose a hive…</option>
+                  {hives!.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
+                </select>
+              </label>
+            )}
             <button type="button" className="wide" onClick={() => navigate('/import')}>Import a study</button>
             <button type="button" className="link-btn" onClick={() => setSheet(false)}>Close</button>
           </div>

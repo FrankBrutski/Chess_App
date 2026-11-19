@@ -44,7 +44,7 @@ function tabOf(page: string | undefined, id: string): TabId | undefined {
 function route(page: string | undefined, id: string, sub: string, sub2: string) {
   switch (page) {
     case 'course':
-      return <CoursePage courseId={id} />;
+      return <CoursePage courseId={id} startEditing={sub === 'edit'} />;
     case 'comb':
       return <CombLines chapterId={id} />;
     case 'read':
