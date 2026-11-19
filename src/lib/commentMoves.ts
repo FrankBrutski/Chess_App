@@ -41,7 +41,11 @@ const NUM_SAN = /^(\d+)(\.{1,3}|…|\.…)([^.…].*)$/;
 const ELLIPSIS = /^(\.{2,3}|…)$/;
 const SAN = /^(?:[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](?:=?[QRBN])?|O-O(?:-O)?|0-0(?:-0)?)[+#]?[!?]*$/;
 
-interface Token { text: string; start: number; end: number }
+interface Token {
+  text: string; start: number; end: number;
+  /** "(" and ")" trimmed off this token: a side line in prose opens or closes here. */
+  opens?: number; closes?: number;
+}
 
 function tokenize(text: string): Token[] {
   const out: Token[] = [];
@@ -62,7 +66,9 @@ function trimToken(t: Token): Token {
     text = text.slice(0, text.length - trail[0].length);
     end -= trail[0].length;
   }
-  return { text, start, end };
+  const opens = lead ? (t.text.slice(0, lead).match(/\(/g)?.length ?? 0) : 0;
+  const closes = trail ? (trail[0].match(/\)/g)?.length ?? 0) : 0;
+  return { text, start, end, opens, closes };
 }
 
 const plyFromNumber = (num: number, dots: string) => (num - 1) * 2 + (dots === '.' ? 0 : 1);
@@ -138,9 +144,22 @@ function scan(text: string, candidates: TreeNode[], forced: boolean, aside = fal
   // Every line read so far, newest first: "(24. Ra1?? Rd8 …) 24...Re8" goes back to an earlier one.
   const chains: Chain[] = [];
   let lastEnd = -1; // token right after the last line read
+  // For each "(" still open: the line it branches off. After its ")", the text carries on with that
+  // line again, as in PGN: "15. Bd3?? (15. Be3 Qa5+ …) 15...h6" answers 15.Bd3, not 15.Be3.
+  const outer: (Chain | undefined)[] = [];
+  const closeUpTo = (end: number, from: number) => {
+    for (let t = from; t < end; t++) {
+      for (let c = 0; c < (tokens[t].closes ?? 0) && outer.length; c++) {
+        const o = outer.pop();
+        const at = o ? chains.indexOf(o) : -1;
+        if (at > 0) { chains.splice(at, 1); chains.unshift(o!); }
+      }
+    }
+  };
   while (i < tokens.length) {
+    for (let c = 0; c < (tokens[i].opens ?? 0); c++) outer.push(chains[0]);
     const chain = chains[0];
-    const run = tryRun(tokens, i, candidates, forced, chains);
+    const run = tryRun(tokens, i, candidates, forced, chains, i > 0 && (tokens[i - 1].closes ?? 0) > 0);
     if (!run) {
       const t = tokens[i];
       const numbered = NUM_SAN.exec(t.text) ?? (NUM.test(t.text) && tokens[i + 1] && SAN.test(tokens[i + 1].text) ? NUM.exec(t.text) : null);
@@ -152,6 +171,7 @@ function scan(text: string, candidates: TreeNode[], forced: boolean, aside = fal
         pieces.push({ kind: 'text', text: text.slice(cursor), stuck: `${move.replace(/\.{3}/, '…')} can't be played ${where}` });
         return pieces.filter((p) => p.kind !== 'text' || p.text.length > 0);
       }
+      closeUpTo(i + 1, i);
       i++;
       continue;
     }
@@ -171,6 +191,7 @@ function scan(text: string, candidates: TreeNode[], forced: boolean, aside = fal
       });
     });
     cursor = run.spans[run.spans.length - 1].end;
+    closeUpTo(run.nextToken, i);
     i = run.nextToken;
     lastEnd = i;
   }
@@ -191,7 +212,7 @@ interface Run {
 /** The last line read in this text: prose like "If 10...Re8 then 11. Be2 … After 11...Bxc3" carries on from it. */
 interface Chain { line: GhostMove[]; baseFen: string; baseId: string; basePly: number }
 
-function tryRun(tokens: Token[], i: number, candidates: TreeNode[], forced: boolean, chains: Chain[] = []): Run | undefined {
+function tryRun(tokens: Token[], i: number, candidates: TreeNode[], forced: boolean, chains: Chain[] = [], afterClose = false): Run | undefined {
   const first = tokens[i];
   let wantPly: number | undefined;
   let firstSan: string | undefined;
@@ -212,7 +233,11 @@ function tryRun(tokens: Token[], i: number, candidates: TreeNode[], forced: bool
   } else return undefined;
 
   // A numbered move that fits the line just read continues that line (the sentence goes on with it).
-  for (const chain of chains) {
+  // Right after a ")", a move with no number carries on the line the side line branched off: "(15. Be3) h6".
+  const wantPlyNum = wantPly;
+  const resume = wantPly === undefined && afterClose && chains[0] ? [chains[0]] : chains;
+  for (const chain of resume) {
+    const wantPly = resume === chains ? wantPlyNum : chain.basePly + chain.line.length;
     if (wantPly === undefined || wantPly <= chain.basePly || wantPly > chain.basePly + chain.line.length) continue;
     const k = wantPly - chain.basePly; // moves of the chain kept before this one
     const pos = positionOf(chain.line[k - 1].fen);
@@ -260,8 +285,11 @@ function playRun(tokens: Token[], i: number, j: number, firstSan: string, pos: C
   line.push(first);
   spans.push({ start: tokens[i].start, end: tokens[j - 1].end, moveIndex: 0 });
   let k = j;
-  while (k < tokens.length) {
+  // A side line in the text ends at its ")", and a "(" starts a new one: neither continues this run.
+  const ends = (n: number) => (tokens[n - 1].closes ?? 0) > 0;
+  while (k < tokens.length && !ends(k)) {
     const t = tokens[k];
+    if ((t.opens ?? 0) > 0) break;
     const nm = NUM_SAN.exec(t.text);
     const plyNow = basePly + line.length;
     if (nm && SAN.test(nm[3])) {
