@@ -12,8 +12,6 @@ import { trainLinesOf } from '../lib/training';
 import { lineState, type Cell } from '../lib/srs';
 import { ProgressRing } from '../components/ProgressRing';
 
-/** Only ever link out to lichess.org (a restored backup file could contain anything). */
-const isLichessUrl = (u: string) => /^https:\/\/lichess\.org\//.test(u);
 
 // Line and move counts per comb, worked out once per stored tree (not on every keystroke while editing).
 const statsCache = new WeakMap<Chapter['root'], { lines: number; moves: number }>();
@@ -80,7 +78,13 @@ export function CoursePage({ courseId, startEditing = false }: { courseId: strin
         <div className="hive-edit-actions">
           {!confirming ? (
             <>
-              <button type="button" onClick={() => navigate(`/import/${course.id}`)}>Import a study</button>
+              <button type="button" onClick={() => navigate(`/import/${course.id}`)}>Import study</button>
+              {course.sections.map((section) => (
+                <button key={section.id} type="button" onClick={() => navigate(`/import/${course.id}/${section.id}`)}>
+                  {section.sourceUrl && getLichessEnabled() ? 'Sync' : 'Re-upload'}
+                  {course.sections.length > 1 ? `: ${section.name}` : ''}
+                </button>
+              ))}
               <button type="button" className="danger-link" onClick={() => setConfirming(true)}>Delete hive</button>
             </>
           ) : (
@@ -224,17 +228,6 @@ export function CoursePage({ courseId, startEditing = false }: { courseId: strin
                 </li>
               ))}
             </ol>
-            {editing && (
-            <div className="section-actions">
-              {combs.length > 0 && <button type="button" onClick={() => navigate(`/train/section/${course.id}/${section.id}`)}>Train section</button>}
-              <button type="button" onClick={() => navigate(`/import/${course.id}/${section.id}`)}>
-                {section.sourceUrl && getLichessEnabled() ? 'Sync from Lichess' : 'Upload a new version'}
-              </button>
-              {section.sourceUrl && isLichessUrl(section.sourceUrl) && (
-                <a className="muted small" href={section.sourceUrl} target="_blank" rel="noreferrer">Open on Lichess</a>
-              )}
-            </div>
-            )}
           </details>
         );
       })}

@@ -10,7 +10,7 @@ export interface Ghost {
   index: number;
   baseId: string;
   /** Where the line came from, for the label above the board. */
-  source?: 'text' | 'engine';
+  source?: 'text' | 'engine' | 'board';
 }
 
 interface Props {

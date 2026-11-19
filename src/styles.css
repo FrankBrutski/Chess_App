@@ -7,7 +7,7 @@
   --accent: #2a1d0e;
   --honey: #f2b11f;
   --honey-deep: #c97f0a;
-  --var: #6a3fb0;         /* variations and lines in the text */
+  --var: #4a3aa6;         /* variations and lines in the text */
   --var-bg: #f3edfb;
   --current-bg: #ffd666;
   --sq-light: #f6e7bf;
@@ -40,7 +40,7 @@
     --accent: #f2b11f;
     --honey: #f2b11f;
     --honey-deep: #b8740a;
-    --var: #c0a2f0;
+    --var: #aaa4f4;
     --var-bg: #261f33;
     --current-bg: #7a5810;
     --sq-light: #d9c08a;
@@ -60,7 +60,7 @@
   --accent: #f2b11f;
   --honey: #f2b11f;
   --honey-deep: #b8740a;
-  --var: #c0a2f0;
+  --var: #aaa4f4;
   --var-bg: #261f33;
   --current-bg: #7a5810;
   --sq-light: #d9c08a;
@@ -667,3 +667,6 @@ div.shot-full { aspect-ratio: 3 / 4; }
 .issue-tag { display: block; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--warn); margin-bottom: 2px; }
 .issue-error .issue-tag { color: var(--bad); }
 .issue-tag .where { color: var(--muted); font-weight: 600; text-transform: none; letter-spacing: 0; }
+.hive-edit-actions { justify-content: flex-start; gap: 8px; }
+.hive-edit-actions > button:not(.danger-link) { padding: 8px 12px; }
+.hive-edit-actions > .danger-link { margin-left: auto; }
