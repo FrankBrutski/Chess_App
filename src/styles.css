@@ -609,6 +609,12 @@ div.shot-full { aspect-ratio: 3 / 4; }
 .review-all span { font-size: 14px; font-weight: 600; opacity: .9; }
 .page.has-fab { padding-bottom: calc(96px + var(--safe-bottom)); }
 
+/* Comb page: a line opens in place to show its moves; the ones after it leaves the line above are bold. */
+.line-preview { padding: 0 16px 14px 62px; }
+.line-moves { margin: 0 0 10px; font-size: 15px; line-height: 1.5; color: var(--muted); }
+.line-moves .mv-new { color: var(--text); font-weight: 700; }
+.line-preview .row > button { flex: 1; min-height: 42px; font-weight: 700; border-radius: 10px; }
+
 /* Openings filter, one line: a sliding Both / White / Black switch, then tier chips (none on = every tier). */
 .hive-filter { display: flex; align-items: center; gap: 6px; margin: 0 0 14px; }
 .seg { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); width: 138px; height: 36px; padding: 3px; border-radius: 999px; background: var(--line); flex: none; }

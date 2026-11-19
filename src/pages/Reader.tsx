@@ -8,7 +8,7 @@ import { Board } from '../components/Board';
 import { ChapterText, type Ghost } from '../components/ChapterText';
 import { navigate } from '../router';
 import { buildIndex, lookup } from '../lib/positions';
-import { getAutoLink, getBoldNotation, getEngineOn, getLineOrder, getShowMarkers, setEngineOn } from '../lib/prefs';
+import { getFlipReader, getAutoLink, getBoldNotation, getEngineOn, getLineOrder, getShowMarkers, setEngineOn } from '../lib/prefs';
 import { EnginePanel } from '../components/EnginePanel';
 import { LineText } from '../components/LineText';
 import { Icon, Toolbar } from '../components/Toolbar';
@@ -24,7 +24,7 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
   // Line view (one line at a time, Chessable style) is the default; "Whole study" shows the full tree.
   const [mode, setMode] = useState<'line' | 'study'>(startNodeId ? 'study' : 'line');
   const [lineKey, setLineKey] = useState(lineId ?? 'main');
-  const [flipped, setFlipped] = useState(false);
+  const flipped = getFlipReader();
   // Transpositions: the same position elsewhere in your repertoire.
   const showMarkers = getShowMarkers();
   const allHives = useLiveQuery(() => (showMarkers ? db.courses.toArray() : []), [showMarkers]);
@@ -222,11 +222,9 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
       </div>
       <Toolbar
         items={[
-          { label: 'Start', icon: Icon.start, onClick: () => select('root'), disabled: pathLen === 0 && !ghost },
           { label: 'Back', icon: Icon.back, onClick: stepBack, disabled: !ghost && pathLen === 0 },
           { label: 'Next', icon: Icon.next, onClick: stepForward, disabled: !ghost && !nextOf(currentId) },
           { label: 'Train', icon: Icon.forage, onClick: () => line && navigate(`/train/line/${chapter.id}/${encodeURIComponent(line.id)}`), disabled: !line?.trainable || !!chapter.skipLines?.includes(line.id), primary: true, title: 'Train this line: learn it if new, else review it (schedules it like the trainer)' },
-          { label: 'Flip', icon: Icon.flip, onClick: () => setFlipped(!flipped) },
           { label: 'Engine', icon: Icon.engine, onClick: toggleEngine, pressed: engineOn, title: 'Stockfish evaluation (runs on this phone)' },
         ]}
       />

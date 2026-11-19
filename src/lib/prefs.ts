@@ -39,6 +39,10 @@ export const setLineOrder = (v: 'mainLast' | 'mainFirst') => write('lineOrder', 
 export const getShowMarkers = () => read('showMarkers') !== '0';
 export const setShowMarkers = (on: boolean) => write('showMarkers', on ? null : '0');
 
+/** Reader: show the board from the other side (off = always from the side you play). */
+export const getFlipReader = () => read('flipReader') === '1';
+export const setFlipReader = (on: boolean) => write('flipReader', on ? '1' : null);
+
 // ---------- Trainer ----------
 
 /** Review ladder in ms; editable in Settings. */
