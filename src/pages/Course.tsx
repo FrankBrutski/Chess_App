@@ -26,11 +26,11 @@ function combStats(c: Chapter) {
   return s;
 }
 
-export function CoursePage({ courseId }: { courseId: string }) {
+export function CoursePage({ courseId, startEditing = false }: { courseId: string; startEditing?: boolean }) {
   const course = useLiveQuery(() => db.courses.get(courseId), [courseId]);
   const chapters = useLiveQuery(() => chaptersOf(courseId), [courseId]);
   const allHives = useLiveQuery(() => db.courses.toArray(), []);
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(startEditing);
   const [confirming, setConfirming] = useState(false);
   const [moving, setMoving] = useState<string>(); // comb id being moved
   const cells = useLiveQuery(async () => new Map<string, Cell>((await db.cells.toArray()).map((c) => [c.key, c])), []);
@@ -75,6 +75,25 @@ export function CoursePage({ courseId }: { courseId: string }) {
       <p className="muted small hive-sub">
         {course.color === 'white' ? 'White' : 'Black'} · {tierName(course.tier)} · {chapters?.length ?? 0} comb{chapters?.length === 1 ? '' : 's'}{course.skip ? ' · not drilled' : ''}
       </p>
+
+      {editing && (
+        <div className="hive-edit-actions">
+          {!confirming ? (
+            <>
+              <button type="button" onClick={() => navigate(`/import/${course.id}`)}>Import a study</button>
+              <button type="button" className="danger-link" onClick={() => setConfirming(true)}>Delete hive</button>
+            </>
+          ) : (
+            <div className="confirm">
+              <span>Delete “{course.name}” and all its combs from this device? Learned moves and honey are kept.</span>
+              <button type="button" className="danger" onClick={async () => { await deleteCourse(course.id); navigate('/openings'); }}>
+                Delete
+              </button>
+              <button type="button" onClick={() => setConfirming(false)}>Cancel</button>
+            </div>
+          )}
+        </div>
+      )}
 
       {editing && (
         <div className="stack edit-box">
@@ -221,21 +240,10 @@ export function CoursePage({ courseId }: { courseId: string }) {
       })}
 
       <div className="stack">
-        {(editing || chapters?.length === 0) && (
+        {!editing && chapters?.length === 0 && (
           <button type="button" className="wide" onClick={() => navigate(`/import/${course.id}`)}>
             Import a study into this hive
           </button>
-        )}
-        {!editing ? null : !confirming ? (
-          <button type="button" className="danger-link" onClick={() => setConfirming(true)}>Delete hive</button>
-        ) : (
-          <div className="confirm">
-            <span>Delete “{course.name}” and all its combs from this device?</span>
-            <button type="button" className="danger" onClick={async () => { await deleteCourse(course.id); navigate('/openings'); }}>
-              Delete
-            </button>
-            <button type="button" onClick={() => setConfirming(false)}>Cancel</button>
-          </div>
         )}
       </div>
     </div>
