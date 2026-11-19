@@ -9,7 +9,7 @@ import {
   getHoneyLearn, getHoneyReview, getLearnBatch, setLearnBatch, getLadder, getMissPolicy, getRetryBack, getReviewNotes, getShowNewMoves, setHoneyLearn,
   setHoneyReview, setLadder, setMissPolicy, setRetryBack, setReviewNotes, setShowNewMoves,
 } from '../lib/prefs';
-import { getShowMarkers, setShowMarkers } from '../lib/prefs';
+import { getShowMarkers, setShowMarkers, getFlipReader, setFlipReader } from '../lib/prefs';
 import { getTheme, setTheme, type Theme } from '../lib/prefs';
 import { getLineOrder, setLineOrder, getTextPrefs, setTextPrefs, DEFAULT_TEXT, type TextPrefs } from '../lib/prefs';
 import { CHESSABLE_LADDER, DEFAULT_LADDER, formatLadder, parseLadder, type MissPolicy } from '../lib/srs';
@@ -34,6 +34,7 @@ export function Settings() {
   const [hl, setHl] = useState(getHoneyLearn());
   const [order, setOrder] = useState(getLineOrder());
   const [markers, setMarkers] = useState(getShowMarkers());
+  const [flipReader, setFlipR] = useState(getFlipReader());
   const [theme, setThemeState] = useState(getTheme());
   const [text, setText] = useState(getTextPrefs());
   const [updateMsg, setUpdateMsg] = useState<string>();
@@ -300,7 +301,7 @@ export function Settings() {
       <details className="set-group">
         <summary>
           <h2>Lines</h2>
-          <span className="muted small">Line order and markers</span>
+          <span className="muted small">Line order, markers, board side</span>
         </summary>
         <div className="stack">
         <label className="field">
@@ -314,6 +315,10 @@ export function Settings() {
         <label className="toggle">
           <input type="checkbox" checked={markers} onChange={(e) => { setMarkers(e.target.checked); setShowMarkers(e.target.checked); }} />
           <span>Show small markers beside moves: ⑂ other moves here, ⇄ same position elsewhere (tap to see them)</span>
+        </label>
+        <label className="toggle">
+          <input type="checkbox" checked={flipReader} onChange={(e) => { setFlipR(e.target.checked); setFlipReader(e.target.checked); }} />
+          <span>Flip the board when reading a line (show it from your opponent's side)</span>
         </label>
         </div>
       </details>
