@@ -358,6 +358,8 @@ export function TrainSession({ mode, items, chapters, cells: startCells, onExit,
       </div>
       <Toolbar
         items={[
+          { label: 'Engine', icon: Icon.engine, onClick: toggleEngine, pressed: engineOn, title: 'Stockfish evaluation (runs on this phone). Stops the clock.' },
+          { label: 'Read', icon: Icon.read, onClick: () => navigate(`/line/${t.chapterId}/${encodeURIComponent(t.line.id)}`), title: 'Leave the quiz and read this line' },
           {
             label: paused ? 'Resume' : 'Pause',
             icon: paused ? Icon.play : Icon.pause,
@@ -366,8 +368,6 @@ export function TrainSession({ mode, items, chapters, cells: startCells, onExit,
             pressed: paused,
             title: 'Pause the move clock',
           },
-          { label: 'Read', icon: Icon.read, onClick: () => navigate(`/line/${t.chapterId}/${encodeURIComponent(t.line.id)}`), title: 'Leave the quiz and read this line' },
-          { label: 'Engine', icon: Icon.engine, onClick: toggleEngine, pressed: engineOn, title: 'Stockfish evaluation (runs on this phone). Stops the clock.' },
         ]}
       />
     </div>
