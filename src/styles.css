@@ -644,3 +644,15 @@ div.shot-full { aspect-ratio: 3 / 4; }
 .stat-grid span { font-size: 13px; color: var(--muted); }
 .stat-rows { list-style: none; margin: 0 0 16px; padding: 0; }
 .stat-rows li { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+
+/* Trainer: move clock, honey, quiz line */
+.train-honey { font-weight: 700; color: var(--honey-deep); font-size: 15px; white-space: nowrap; padding: 0 4px; }
+.move-timer { display: flex; align-items: center; gap: 8px; width: min(100%, 560px); padding: 6px 12px; box-sizing: border-box; }
+.move-timer-track { flex: 1; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.move-timer-track i { display: block; height: 100%; background: #5aa845; border-radius: 4px; transition: width .2s linear; }
+.move-timer.low .move-timer-track i { background: var(--bad); }
+.move-timer.paused .move-timer-track i { background: var(--muted); }
+.move-timer span { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 3.2em; text-align: right; }
+.quiz-line { margin: 0 0 8px; font-size: 15px; }
+.train-done { margin: 0 0 12px; }
+.train-done p { margin: 0 0 6px; }

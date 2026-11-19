@@ -78,10 +78,12 @@ export const setShowNewMoves = (on: boolean) => write('showNewMoves', on ? '1' :
 export const getLearnBatch = () => Math.max(1, Math.min(20, Number(read('learnBatch') ?? 5)));
 export const setLearnBatch = (n: number) => write('learnBatch', n === 5 ? null : String(n));
 
-export const getHoneyLearn = () => Math.max(0, Number(read('honeyLearn') ?? 1));
-export const getHoneyReview = () => Math.max(0, Number(read('honeyReview') ?? 2));
-export const setHoneyLearn = (n: number) => write('honeyLearn', String(n));
-export const setHoneyReview = (n: number) => write('honeyReview', String(n));
+/** Immediate quiz tries for each new line when learning (Chessable's default is 3). */
+export const getQuizTries = () => Math.min(5, Math.max(1, Number(read('quizTries') ?? 3)));
+export const setQuizTries = (n: number) => write('quizTries', String(n));
+/** Seconds to play each quiz move; 0 turns the timer off. */
+export const getMoveSeconds = () => Math.max(0, Number(read('moveSeconds') ?? 60));
+export const setMoveSeconds = (n: number) => write('moveSeconds', String(n));
 
 /** Openings filter: colour and tiers to show (empty tiers = every tier). Remembered between visits. */
 export interface HiveFilter { color: 'all' | 'white' | 'black'; tiers: number[] }
