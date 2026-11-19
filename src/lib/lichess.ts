@@ -40,11 +40,19 @@ export async function fetchStudyPgn(ref: StudyRef, token?: string): Promise<stri
   } catch {
     throw new Error('Could not reach Lichess. Check your connection, or download the PGN and upload the file instead.');
   }
-  if (res.status === 404 || res.status === 403 || res.status === 401) {
+  if (res.status === 403) {
     throw new Error(
-      'Lichess would not share this study. If it is private, add a Lichess token in Settings, or make it unlisted.',
+      token
+        ? 'Lichess refused to export this study (403), even with your token. This usually means its owner turned off "Share & export" in the study settings; set it to Everyone, or ask the owner to.'
+        : 'Lichess refused to export this study (403). This usually means its owner turned off "Share & export" in the study settings, or the study is private. If it is your study, set that to Everyone, or add a Lichess token in Settings.',
     );
   }
+  if (res.status === 404 || res.status === 401) {
+    throw new Error(
+      `Lichess could not find this study (${res.status}). Check the link. If the study is private, add a Lichess token in Settings, or make it unlisted.`,
+    );
+  }
+  if (res.status === 429) throw new Error('Lichess is limiting requests right now (429). Wait a minute and try again.');
   if (!res.ok) throw new Error(`Lichess returned an error (${res.status}). Try again in a minute.`);
   return res.text();
 }
