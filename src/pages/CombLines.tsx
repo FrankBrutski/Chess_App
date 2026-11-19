@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../lib/db';
 import { navigate } from '../router';
-import { moveNumber } from '../lib/tree';
+import { isWhiteMove, moveNumber } from '../lib/tree';
 import { getLineOrder } from '../lib/prefs';
 import { splitLines, type Line } from '../lib/lines';
 import { combSkipped } from '../lib/training';
@@ -20,6 +20,7 @@ export function CombLines({ chapterId }: { chapterId: string }) {
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState<string>();
   const [menu, setMenu] = useState<string>();
+  const [open, setOpen] = useState<string>(); // line shown expanded, with its moves
 
   if (chapter === undefined) return <div className="page"><p className="muted">Loading…</p></div>;
   if (chapter === null) return <div className="page"><p>Comb not found.</p></div>;
@@ -127,7 +128,7 @@ export function CombLines({ chapterId }: { chapterId: string }) {
                 </form>
               ) : (
                 <div className="line-row-wrap">
-                  <button type="button" className="comb-line" onClick={() => navigate(`/line/${chapter.id}/${encodeURIComponent(l.id)}`)}>
+                  <button type="button" className="comb-line" onClick={() => setOpen(open === l.id ? undefined : l.id)} aria-expanded={open === l.id}>
                     <span className={`line-dot${s ? ` dot-${s}` : ''}`} aria-hidden="true">{l.number}</span>
                     <span className="comb-line-text">
                       <span className="card-title">{l.name}</span>
@@ -146,6 +147,25 @@ export function CombLines({ chapterId }: { chapterId: string }) {
                   >
                     ⋯
                   </button>
+                </div>
+              )}
+              {open === l.id && editing !== l.id && (
+                <div className="line-preview">
+                  <p className="line-moves">
+                    {l.nodes.map((n, i) => (
+                      <span key={n.id} className={i >= l.shared && l.shared > 0 ? 'mv-new' : undefined}>
+                        {isWhiteMove(n.ply) || i === 0 ? moveNumber(n.ply) : ''}{n.san}{' '}
+                      </span>
+                    ))}
+                  </p>
+                  <div className="row">
+                    <button type="button" onClick={() => navigate(`/line/${chapter.id}/${encodeURIComponent(l.id)}`)}>Read</button>
+                    {s && (
+                      <button type="button" className={s === 'due' ? 'review-btn' : 'learn-btn'} onClick={() => navigate(`/train/line/${chapter.id}/${encodeURIComponent(l.id)}`)}>
+                        {s === 'new' ? 'Learn' : 'Review'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
               {menu === l.id && editing !== l.id && (
