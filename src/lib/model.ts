@@ -65,6 +65,8 @@ export interface Chapter {
   issues?: Issue[];
   /** Your own names for lines, by line id (see lib/lines.ts). Kept across re-syncs. */
   lineNames?: Record<string, string>;
+  /** Your own line order, by line id (Move up / Move down on the comb page). Kept across re-syncs. */
+  lineOrder?: string[];
   /** Line ids you chose not to drill. Kept across re-syncs. */
   skipLines?: string[];
   /** true = don't drill any line of this comb. */

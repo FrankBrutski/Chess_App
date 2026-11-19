@@ -585,7 +585,7 @@ div.shot-full { aspect-ratio: 3 / 4; }
 .progress-bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; margin: 0 0 14px; }
 .progress-bar > i { display: block; height: 100%; min-width: 4px; background: var(--honey); border-radius: 3px; }
 .more-btn { border: none; background: none; min-width: 44px; min-height: 44px; padding: 0; font-size: 22px; line-height: 1; color: var(--muted); }
-.line-menu { display: flex; gap: 8px; padding: 0 16px 12px 62px; }
+.line-menu { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 12px 62px; }
 .line-menu button { min-height: 36px; padding: 6px 14px; font-size: 14px; }
 .line-rows .line-edit p { margin: 6px 0 0; }
 

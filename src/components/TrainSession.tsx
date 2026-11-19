@@ -59,7 +59,7 @@ export function TrainSession({ mode, items, chapters, cells: startCells, onExit,
   const annotations = useMemo(() => (chapter ? annotateChapter(chapter.root, { auto: getAutoLink() }) : new Map()), [chapter]);
   const hive = useLiveQuery(async () => (t ? db.courses.get(t.hiveId) : undefined), [t?.hiveId]);
   const lineCount = useMemo(
-    () => (chapter ? splitLines(chapter.root, chapter.orientation, { names: chapter.lineNames, order: getLineOrder() }).length : 0),
+    () => (chapter ? splitLines(chapter.root, chapter.orientation, { names: chapter.lineNames, order: getLineOrder(), custom: chapter.lineOrder }).length : 0),
     [chapter],
   );
 

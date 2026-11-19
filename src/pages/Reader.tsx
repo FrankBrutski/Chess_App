@@ -20,7 +20,7 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
 
   const idx = useMemo(() => (chapter ? indexTree(chapter.root) : undefined), [chapter]);
   const annotations = useMemo(() => (chapter ? annotateChapter(chapter.root, { auto: getAutoLink() }) : new Map()), [chapter]);
-  const lines = useMemo(() => (chapter ? splitLines(chapter.root, chapter.orientation, { names: chapter.lineNames, order: getLineOrder() }) : []), [chapter]);
+  const lines = useMemo(() => (chapter ? splitLines(chapter.root, chapter.orientation, { names: chapter.lineNames, order: getLineOrder(), custom: chapter.lineOrder }) : []), [chapter]);
   // Line view (one line at a time, Chessable style) is the default; "Whole study" shows the full tree.
   const [mode, setMode] = useState<'line' | 'study'>(startNodeId ? 'study' : 'line');
   const [lineKey, setLineKey] = useState(lineId ?? 'main');

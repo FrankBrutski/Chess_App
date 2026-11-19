@@ -111,3 +111,17 @@ describe('honey', () => {
     expect(reviewHoney({ ...c, level: 4 }, 3)).toBe(7);
   });
 });
+
+describe('custom line order', () => {
+  it('follows your order and slots new lines in after their natural neighbour', async () => {
+    const { applyCustomOrder } = await import('../lines');
+    const items = ['a', 'b', 'c', 'd'].map((id) => ({ id }));
+    const ids = (xs: { id: string }[]) => xs.map((x) => x.id).join('');
+    expect(ids(applyCustomOrder(items, (x) => x.id, ['c', 'a', 'b', 'd']))).toBe('cabd');
+    // 'd' is new (not in the saved order): it goes right after 'c', its natural predecessor.
+    expect(ids(applyCustomOrder(items, (x) => x.id, ['c', 'b', 'a']))).toBe('cdba');
+    // A saved id that no longer exists is ignored.
+    expect(ids(applyCustomOrder(items, (x) => x.id, ['zz', 'b', 'a', 'c', 'd']))).toBe('bacd');
+    expect(ids(applyCustomOrder(items, (x) => x.id, undefined))).toBe('abcd');
+  });
+});
