@@ -2,7 +2,7 @@ import { Fragment, memo, type ReactNode } from 'react';
 import type { MoveNode, RootNode, TreeNode } from '../lib/model';
 import type { CommentPiece, GhostMove } from '../lib/commentMoves';
 import type { NodeAnnotations } from '../lib/annotations';
-import { splitNotation } from '../lib/notation';
+import { splitNotation, splitParagraphs } from '../lib/notation';
 import { NAG_SYMBOLS, countMoves, isWhiteMove, moveNumber, nagClass } from '../lib/tree';
 
 export interface Ghost {
@@ -39,12 +39,9 @@ export function PlainText({ text, bold }: { text: string; bold: boolean }) {
 export function BrokenText({ text, bold }: { text: string; bold: boolean }) {
   if (!text.includes('\n')) return <PlainText text={text} bold={bold} />;
   const out: ReactNode[] = [];
-  text.split(/\n[ \t]*\n\s*/).forEach((para, i) => {
+  splitParagraphs(text).forEach((para, i) => {
     if (i) out.push(<span key={`g${i}`} className="para-gap" aria-hidden="true" />);
-    para.split('\n').forEach((ln, j) => {
-      if (j) out.push(<br key={`b${i}-${j}`} />);
-      out.push(<PlainText key={`t${i}-${j}`} text={ln} bold={bold} />);
-    });
+    out.push(<PlainText key={`t${i}`} text={para} bold={bold} />);
   });
   return <>{out}</>;
 }

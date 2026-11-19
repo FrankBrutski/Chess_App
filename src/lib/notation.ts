@@ -17,3 +17,9 @@ export function splitNotation(text: string): { text: string; bold: boolean }[] {
   if (last < text.length) out.push({ text: text.slice(last), bold: false });
   return out;
 }
+
+/**
+ * Paragraphs of a note. Any run of line breaks, with or without a blank line between
+ * (Lichess keeps whatever you typed), is one paragraph break, so every gap looks the same.
+ */
+export const splitParagraphs = (text: string): string[] => text.split(/[ \t]*(?:\r?\n[ \t]*)+/);
