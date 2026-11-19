@@ -6,7 +6,7 @@ import { moveNumber } from '../lib/tree';
 import { getLineOrder } from '../lib/prefs';
 import { splitLines, type Line } from '../lib/lines';
 import { combSkipped } from '../lib/training';
-import { lineState, type Cell, type LineState } from '../lib/srs';
+import { lineState, userKeys, type Cell, type LineState, type TrainLine } from '../lib/srs';
 
 /** A comb's lines, one wall-to-wall row each. Tapping a line opens it in the reader; backing out returns here. */
 export function CombLines({ chapterId }: { chapterId: string }) {
@@ -27,13 +27,18 @@ export function CombLines({ chapterId }: { chapterId: string }) {
   const skipped = new Set(chapter.skipLines ?? []);
   const combOff = course ? combSkipped(chapter, [course]) : !!chapter.skip;
   const now = Date.now();
-  const state = (l: Line): LineState | undefined =>
-    cells && l.trainable && !skipped.has(l.id) && !combOff
-      ? lineState({ chapterId: chapter.id, hiveId: chapter.courseId, combTitle: chapter.title, color: chapter.orientation, line: l }, cells, now)
+  const drill = (l: Line): TrainLine | undefined =>
+    l.trainable && !skipped.has(l.id) && !combOff
+      ? { chapterId: chapter.id, hiveId: chapter.courseId, combTitle: chapter.title, color: chapter.orientation, line: l }
       : undefined;
-  const states = lines.map(state);
+  const states = lines.map((l): LineState | undefined => { const t = drill(l); return t && cells ? lineState(t, cells, now) : undefined; });
   const drilled = states.filter((s) => s !== undefined).length;
   const learned = states.filter((s) => s && s !== 'new').length;
+  const fresh = states.filter((s) => s === 'new').length;
+  // Your moves due for review in this comb (a move shared by several lines counts once).
+  const due = new Set(
+    lines.flatMap((l) => { const t = drill(l); return t ? userKeys(t) : []; }).filter((k) => (cells?.get(k)?.due ?? Infinity) <= now),
+  ).size;
 
   const needle = q.trim().toLowerCase().replace(/…/g, '...');
   const matches = (l: Line) => {
@@ -78,10 +83,17 @@ export function CombLines({ chapterId }: { chapterId: string }) {
         </div>
       )}
 
-      <div className="row comb-actions">
-        <button type="button" className="primary" onClick={() => navigate(`/train/comb/${chapter.id}`)} disabled={!drilled}>Train this comb</button>
-        <button type="button" onClick={() => navigate(`/read/${chapter.id}/root`)}>Read whole study</button>
-      </div>
+      {drilled > 0 && (
+        <div className="hive-actions comb-actions">
+          {due > 0 ? (
+            <button type="button" className="review-btn" onClick={() => navigate(`/train/comb/${chapter.id}/review`)}>Review ({due})</button>
+          ) : <span />}
+          <button type="button" className="learn-btn" disabled={!fresh} onClick={() => navigate(`/train/comb/${chapter.id}/learn`)}>
+            {fresh ? 'Learn' : 'All learned'}
+          </button>
+        </div>
+      )}
+      <button type="button" className="wide comb-read" onClick={() => navigate(`/read/${chapter.id}/root`)}>Read whole study</button>
 
       {lines.length > 6 && (
         <input
