@@ -377,7 +377,6 @@ details.section:not([open]) > summary::before { content: '▸'; }
 .link-btn.small { font-size: 13px; }
 
 /* ---------- trainer ---------- */
-.train-cta { margin-bottom: 14px; }
 .honey-line { text-align: center; margin: -6px 0 12px; color: var(--honey-deep); font-weight: 600; }
 .check { display: flex; gap: 10px; align-items: center; font-size: 15px; }
 .check input { width: 20px; height: 20px; }
@@ -568,8 +567,7 @@ div.shot-full { aspect-ratio: 3 / 4; }
 
 /* ---------- a comb's lines ---------- */
 .comb-heading { font-size: 20px; margin: 0; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.comb-actions { margin-bottom: 12px; }
-.comb-actions > button { flex: 1; }
+.comb-actions { margin: 0 0 14px; }
 .line-rows { margin-top: 12px; }
 .line-row-wrap { display: flex; align-items: center; gap: 6px; padding-right: 12px; }
 .line-row-wrap .comb-line { flex: 1; min-width: 0; }
@@ -601,3 +599,12 @@ div.shot-full { aspect-ratio: 3 / 4; }
 .line-menu { display: flex; gap: 8px; padding: 0 16px 12px 62px; }
 .line-menu button { min-height: 36px; padding: 6px 14px; font-size: 14px; }
 .line-rows .line-edit p { margin: 6px 0 0; }
+
+/* Review all: a floating pill over the Openings page, above the home indicator (Chessable style). */
+.review-all {
+  position: fixed; z-index: 40; right: 16px; bottom: calc(16px + var(--safe-bottom));
+  min-height: 54px; padding: 0 24px; border-radius: 999px; font-size: 17px; font-weight: 700;
+  background: var(--honey-deep); border-color: var(--honey-deep); color: #fff; box-shadow: 0 6px 18px rgba(0, 0, 0, .22);
+}
+.review-all span { font-size: 14px; font-weight: 600; opacity: .9; }
+.page.has-fab { padding-bottom: calc(96px + var(--safe-bottom)); }

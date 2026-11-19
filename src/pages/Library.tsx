@@ -52,7 +52,7 @@ export function Library() {
   const groups = groupHives(hives ?? []);
 
   return (
-    <div className="page">
+    <div className={`page${due ? ' has-fab' : ''}`}>
       <header className="page-header">
         <button type="button" className="icon-btn" onClick={() => navigate('/')} aria-label="Home">‹</button>
         <h1 className="brand"><HexMark /> Openings</h1>
@@ -62,11 +62,6 @@ export function Library() {
         <button type="button" className="icon-btn small-text" onClick={() => navigate('/board')} aria-label="Master board" title="Master board: look up a position">Board</button>
         <button type="button" className="icon-btn" onClick={() => navigate('/settings')} aria-label="Settings">{Icon.settings}</button>
       </header>
-      {(hives?.length ?? 0) > 0 && (
-        <button type="button" className="primary wide train-cta" onClick={() => navigate('/train')}>
-          Train{due ? ` · ${due} due` : ''}
-        </button>
-      )}
       {hives?.length === 0 && (
         <div className="empty">
           <p>No hives yet.</p>
@@ -128,6 +123,11 @@ export function Library() {
       <button type="button" className="wide" onClick={() => navigate('/import')}>
         Import a study
       </button>
+      {!reorder && !!due && (
+        <button type="button" className="review-all" onClick={() => navigate('/train/all/review')}>
+          Review all <span>({due})</span>
+        </button>
+      )}
     </div>
   );
 }

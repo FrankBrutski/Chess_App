@@ -112,8 +112,6 @@ export function CoursePage({ courseId }: { courseId: string }) {
         </div>
       )}
 
-      <button type="button" className="primary wide" onClick={() => navigate(`/train/hive/${course.id}`)}>Train this hive</button>
-
       {issueCount > 0 && (
         <button type="button" className="wide issues-link" onClick={() => navigate(`/issues/${course.id}`)}>
           Import issues ({issueCount})

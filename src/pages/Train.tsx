@@ -10,12 +10,16 @@ import { groupHives, tierName } from '../lib/hives';
 import { TrainSession, type SessionItem } from '../components/TrainSession';
 import { HexMark } from '../components/HexMark';
 
-/** Route presets: #/train/hive/<id>, #/train/section/<hiveId>/<sectionId>, #/train/comb/<chapterId>. */
+/**
+ * Route presets: #/train/hive/<id>, #/train/section/<hiveId>/<sectionId>, #/train/comb/<chapterId>.
+ * Start straight away: #/train/hive/<id>/learn|review, #/train/comb/<id>/learn|review, #/train/all/review.
+ */
 export function TrainPage({ kind, a, b }: { kind?: string; a?: string; b?: string }) {
   const [scope, setScopeState] = useState<TrainScope>(() => {
     const s = getScope();
     if (kind === 'hive' && a) return { ...s, hive: a, section: '', comb: '' };
     if (kind === 'section' && a && b) return { ...s, hive: a, section: b, comb: '' };
+    if (kind === 'all') return { hive: '', section: '', comb: '', mainHivesOnly: false, mainLinesOnly: false };
     return s;
   });
   const [combPreset] = useState(kind === 'comb' || kind === 'line' ? a : undefined);
@@ -63,10 +67,18 @@ export function TrainPage({ kind, a, b }: { kind?: string; a?: string; b?: strin
     };
   }, [data, now]);
 
-  // #/train/hive/<id>/learn or /review (the buttons on a hive card) start straight away, once.
-  const [autoStart, setAutoStart] = useState<'learn' | 'review' | undefined>(kind === 'hive' && (b === 'learn' || b === 'review') ? b : undefined);
+  // Learn / Review buttons (hive cards, the comb page, Review all) start straight away, once,
+  // and the session's exit goes back to the page they were on.
+  const startArg = kind === 'all' ? a : b;
+  const [autoStart, setAutoStart] = useState<'learn' | 'review' | undefined>(
+    (kind === 'hive' || kind === 'comb' || kind === 'all') && (startArg === 'learn' || startArg === 'review') ? startArg : undefined,
+  );
+  const backTo = startArg === 'learn' || startArg === 'review' ? (kind === 'comb' ? `/comb/${a}` : '/openings') : undefined;
   useEffect(() => {
-    if (!autoStart || !data || session || data.lines.some((t) => t.hiveId !== a)) return;
+    if (!autoStart || !data || session) return;
+    // Wait until the data is for the button's scope (a comb link fills in its scope a moment later).
+    if (kind === 'hive' && data.lines.some((t) => t.hiveId !== a)) return;
+    if (kind === 'comb' && (scope.comb !== a || data.lines.some((t) => t.chapterId !== a))) return;
     setAutoStart(undefined);
     const items = autoStart === 'learn'
       ? planLearn(data.lines, data.cells).slice(0, learnCount).map((t) => ({ t }))
@@ -92,8 +104,13 @@ export function TrainPage({ kind, a, b }: { kind?: string; a?: string; b?: strin
         items={session.items}
         chapters={data.chapters}
         cells={data.cells}
-        onExit={() => { if (lineId) { navigate(`/line/${a}/${encodeURIComponent(lineId)}`); return; } setSession(undefined); setReload((r) => r + 1); }}
-        exitLabel={lineId ? 'Back to reading' : undefined}
+        onExit={() => {
+          if (lineId) { navigate(`/line/${a}/${encodeURIComponent(lineId)}`); return; }
+          if (backTo) { navigate(backTo); return; }
+          setSession(undefined);
+          setReload((r) => r + 1);
+        }}
+        exitLabel={lineId ? 'Back to reading' : backTo ? (kind === 'comb' ? 'Back to the comb' : 'Back to openings') : undefined}
       />
     );
   }
