@@ -254,3 +254,26 @@ describe('side lines in parentheses inside a prose aside (Four Pawns Attack, ear
     expect(h6 && h6.kind === 'move' && h6.line.slice(h6.index - 2, h6.index + 1).map((g) => g.san)).toEqual(['Nc5', 'Bd3', 'h6']);
   });
 });
+
+describe('a space after the move number dots is optional everywhere', () => {
+  const variants = ['15. Bd3 h6 16. Be3', '15.Bd3 h6 16.Be3', '15. Bd3 15... h6 16. Be3', '15.Bd3 15...h6 16.Be3', '15.Bd3 15…h6 16.Be3'];
+  const base = '1. d4 Nf6 2. c4 g6 3. Nc3 Bg7 4. e4 d6 5. f4 c5 6. dxc5 O-O 7. cxd6 exd6 8. Be2 Qa5 9. Bd2 Re8 10. Qc2 Na6 11. Nf3 Qb6 12. Rc1 Nxe4 13. Nxe4 Bf5 14. Nfg5 Nc5';
+  const sans = (text: string) => {
+    const [c] = parseChapters(`[Orientation "black"]\n\n${base} { ${text} } *`);
+    const all = [...annotateChapter(c.root).values()].flatMap((a) => a.after.flat());
+    const last = all.filter((p) => p.kind === 'move').pop();
+    return last && last.kind === 'move' ? last.line.slice(0, last.index + 1).map((g) => g.san) : undefined;
+  };
+  for (const v of variants) {
+    it(`reads "${v}" in a <…> line and in a prose aside`, () => {
+      expect(sans(`<${v}>`)).toEqual(['Bd3', 'h6', 'Be3']);
+      expect(sans(`<After ${v} White is fine.>`)).toEqual(['Bd3', 'h6', 'Be3']);
+    });
+    it(`reads "${v}" as PGN moves`, () => {
+      const [c] = parseChapters(`${base} ${v} *`);
+      let n: TreeNode = c.root; const out: string[] = [];
+      for (let m = n.children[0]; m; m = m.children[0]) { n = m; out.push(m.san); }
+      expect(out.slice(-3)).toEqual(['Bd3', 'h6', 'Be3']);
+    });
+  }
+});

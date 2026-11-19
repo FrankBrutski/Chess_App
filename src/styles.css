@@ -659,3 +659,11 @@ div.shot-full { aspect-ratio: 3 / 4; }
 .issue-detail { display: block; margin-top: 2px; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
 .hive-edit-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin: 0 0 12px; }
 .hive-edit-actions .confirm { width: 100%; }
+
+/* Import issues: type chips and labels */
+.issue-filter { margin: -4px 0 12px; }
+.chip .n { margin-left: 6px; font-weight: 600; opacity: .7; }
+.chip.on .n { opacity: .9; }
+.issue-tag { display: block; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--warn); margin-bottom: 2px; }
+.issue-error .issue-tag { color: var(--bad); }
+.issue-tag .where { color: var(--muted); font-weight: 600; text-transform: none; letter-spacing: 0; }
