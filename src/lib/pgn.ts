@@ -4,6 +4,7 @@ import { makeFen } from 'chessops/fen';
 import { makeUci, makeSquare } from 'chessops/util';
 import type { Position } from 'chessops/chess';
 import { plyOf } from './boardMove';
+import { epd } from './fen';
 import type { Chapter, Issue, MoveNode, RootNode, Shape } from './model';
 
 export interface ParsedChapter {
@@ -25,7 +26,7 @@ export interface UnreadableMove {
   onMainLine: boolean;
 }
 
-const epd = (pos: Position) => makeFen(pos.toSetup()).split(' ').slice(0, 4).join(' ');
+const epdOf = (pos: Position) => epd(makeFen(pos.toSetup()));
 
 /** Split raw PGN comments into readable text and board shapes. */
 export function splitComments(raw: string[] | undefined): { texts: string[]; shapes: Shape[] } {
@@ -62,7 +63,7 @@ function convertChildren(
       bad.push({ san: child.data.san, ply: ply + 1, parentId, onMainLine: onMain && idx === 0 });
       return;
     }
-    const key = `${epd(pos)}|${makeUci(move)}`;
+    const key = `${epdOf(pos)}|${makeUci(move)}`;
     const next = pos.clone();
     const san = child.data.san;
     next.play(move);

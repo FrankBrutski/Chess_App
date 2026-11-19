@@ -4,10 +4,9 @@ import { parseSan, makeSanAndPlay } from 'chessops/san';
 import type { LineTag, MoveNode, RootNode, TreeNode } from './model';
 import { positionOf } from './boardMove';
 import { indexTree } from './tree';
+import { epd } from './fen';
 
 export const TAG_LABEL: Record<LineTag, string> = { best: 'Best', also: 'Also wins', refute: 'Refutation', idea: 'Idea' };
-
-const epd = (fen: string) => fen.split(' ').slice(0, 4).join(' ');
 
 /** Deep copy so edits never change the object Dexie / React handed us. */
 const clone = (root: RootNode): RootNode => structuredClone(root);

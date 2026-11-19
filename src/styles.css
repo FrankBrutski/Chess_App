@@ -177,8 +177,6 @@ h2 { font-size: 17px; margin: 8px 0 0; }
 .reader-title > * { max-width: 100%; }
 .reader-title .line-num { font-size: inherit; }
 .reader-hive { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.reader-course { font-size: 13px; font-weight: 500; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.reader-chapter { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .reader-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .board-pane { flex: none; padding: 0; display: flex; flex-direction: column; gap: 6px; align-items: center; }
 .board-pane > :not(.board-wrap) { margin: 0 8px; }
@@ -346,8 +344,6 @@ details.section:not([open]) > summary::before { content: '▸'; }
 .section-name { font-weight: 700; flex: 1; }
 .section-tools { display: flex; gap: 6px; margin-bottom: 8px; }
 .section-tools input { flex: 1; }
-.section-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.section-actions button { min-height: 36px; padding: 6px 12px; font-size: 14px; }
 
 /* ---------- engine ---------- */
 .engine-panel {
@@ -391,7 +387,6 @@ details.section:not([open]) > summary::before { content: '▸'; }
 .scope-box .stack { margin-bottom: 0; }
 .center { text-align: center; }
 .session-summary { text-align: center; color: var(--muted); font-size: 14px; margin: 12px 0; }
-.train .reader-title .reader-course { color: var(--honey-deep); }
 .section-tools .check { font-size: 13px; gap: 4px; }
 
 /* Line view: keep moves and notes compact. */
@@ -456,12 +451,6 @@ details.section:not([open]) > summary::before { content: '▸'; }
 .update-banner span { flex: 1; font-size: 14px; }
 
 /* ---------- stings ---------- */
-.primary-file {
-  display: flex; align-items: center; justify-content: center; min-height: 48px; margin-bottom: 12px;
-  border-radius: 10px; background: var(--honey-deep); color: #fff; font-weight: 600; cursor: pointer;
-}
-.primary-file.busy { opacity: .7; }
-.primary-file input { display: none; }
 .list-tools { justify-content: space-between; margin: -6px 0 10px; }
 .list-tools .link-btn { font-size: 14px; }
 .shot-grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -513,7 +502,6 @@ div.shot-full { aspect-ratio: 3 / 4; }
 
 /* Stings drill */
 .drill-cta { margin-bottom: 10px; }
-.primary-file.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--line); }
 .drill .feedback { margin: 0; }
 
 /* ---------- hive cards (Openings) ---------- */
