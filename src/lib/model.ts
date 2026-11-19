@@ -42,6 +42,8 @@ export interface Issue {
   severity: 'error' | 'warning';
   kind: 'unreadable-move' | 'bad-bracket-line' | 'unmatched-bracket' | 'conflicting-moves' | 'empty-chapter';
   message: string;
+  /** Where to find it: the moves leading up to it, and the bracketed text. */
+  detail?: string;
   /** Node to jump to in the reader. */
   nodeId?: string;
   /** Stable identity, used to tell which issues a re-sync fixed. */

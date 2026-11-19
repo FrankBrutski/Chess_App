@@ -656,3 +656,4 @@ div.shot-full { aspect-ratio: 3 / 4; }
 .quiz-line { margin: 0 0 8px; font-size: 15px; }
 .train-done { margin: 0 0 12px; }
 .train-done p { margin: 0 0 6px; }
+.issue-detail { display: block; margin-top: 2px; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }

@@ -3,10 +3,23 @@ import type { ParsedChapter } from './pgn';
 import { annotateChapter } from './annotations';
 import { moveNumber } from './tree';
 import type { ParseOptions } from './commentMoves';
+import { splitLines, type SplitOptions } from './lines';
 
 const epd = (fen: string) => fen.split(' ').slice(0, 4).join(' ');
 const sideToMove = (fen: string) => (fen.split(' ')[1] === 'b' ? 'black' : 'white');
 const label = (n: TreeNode) => (n.id === 'root' ? 'the start' : `${moveNumber((n as MoveNode).ply)}${(n as MoveNode).san}`);
+
+/** The last few moves up to and including n, e.g. "…8.Be2 exd5 9.cxd5 Re8". */
+function movesTo(n: TreeNode, parentOf: Map<string, TreeNode>, count = 6): string {
+  const path: MoveNode[] = [];
+  for (let c: TreeNode | undefined = n; c && c.id !== 'root'; c = parentOf.get(c.id)) path.unshift(c as MoveNode);
+  if (!path.length) return 'the start';
+  const shown = path.slice(-count);
+  const text = shown
+    .map((m, i) => (m.ply % 2 === 1 || i === 0 ? `${moveNumber(m.ply)}${m.san}` : m.san))
+    .join(' ');
+  return (shown.length < path.length ? '… ' : '') + text;
+}
 
 function walk(root: RootNode, f: (n: TreeNode, onMain: boolean) => void) {
   const go = (n: TreeNode, onMain: boolean) => {
@@ -20,10 +33,15 @@ function walk(root: RootNode, f: (n: TreeNode, onMain: boolean) => void) {
  * The import checker. Only problems that cut the main line short are errors;
  * everything else is a warning that is shown but never stops an import.
  */
-export function checkChapter(p: ParsedChapter, opts: ParseOptions = {}): Issue[] {
+export function checkChapter(p: ParsedChapter, opts: ParseOptions & { lines?: SplitOptions } = {}): Issue[] {
   const issues: Issue[] = [];
   const byId = new Map<string, TreeNode>();
-  walk(p.root, (n) => byId.set(n.id, n));
+  const parentOf = new Map<string, TreeNode>();
+  walk(p.root, (n) => { byId.set(n.id, n); n.children.forEach((c) => parentOf.set(c.id, n)); });
+  // "Line 3": the first line (as the comb page numbers them) that passes through a move.
+  const lineOf = new Map<string, number>();
+  for (const l of splitLines(p.root, p.orientation, opts.lines)) for (const m of l.nodes) if (!lineOf.has(m.id)) lineOf.set(m.id, l.number);
+  const inLine = (n: TreeNode | undefined) => (n && lineOf.has(n.id) ? `Line ${lineOf.get(n.id)}: ` : '');
 
   if (!p.root.children.length && !p.unreadable.length) {
     issues.push({ severity: 'error', kind: 'empty-chapter', message: 'This chapter has no moves.', key: 'empty' });
@@ -32,12 +50,14 @@ export function checkChapter(p: ParsedChapter, opts: ParseOptions = {}): Issue[]
   for (const u of p.unreadable) {
     const parent = byId.get(u.parentId);
     const where = parent ? `after ${label(parent)}` : '';
+    const bad = `${moveNumber(u.ply)}${u.san}`;
     issues.push({
       severity: u.onMainLine ? 'error' : 'warning',
       kind: 'unreadable-move',
       message: u.onMainLine
-        ? `Main line stops ${where}: "${u.san}" is not a legal move there, so the rest of the main line is missing.`
-        : `Side line skipped ${where}: "${u.san}" is not a legal move there.`,
+        ? `${inLine(parent)}main line stops ${where}: ${bad} is not a legal move there, so the rest of the main line is missing.`
+        : `${inLine(parent)}side line skipped ${where}: ${bad} is not a legal move there.`,
+      detail: parent ? `Moves to here: ${movesTo(parent, parentOf)}` : undefined,
       nodeId: u.parentId,
       key: `unreadable|${parent && 'key' in parent ? parent.key : 'root'}|${u.san}`,
     });
@@ -54,7 +74,8 @@ export function checkChapter(p: ParsedChapter, opts: ParseOptions = {}): Issue[]
           issues.push({
             severity: 'warning',
             kind: 'bad-bracket-line',
-            message: `Bracketed line at ${label(n)} has an illegal move: <${piece.text}>`,
+            message: `${inLine(n)}bracketed line in the note at ${label(n)}: ${piece.reason ?? 'it has an illegal move'}.`,
+            detail: `<${piece.text}> · moves to here: ${movesTo(n, parentOf)}`,
             nodeId: n.id,
             key: `bad|${'key' in n ? n.key : 'root'}|${piece.text}`,
           });

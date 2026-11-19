@@ -29,9 +29,10 @@ export function IssueList({ issues, compact, onOpen }: Props) {
               {onOpen && i.nodeId ? (
                 <button type="button" className="issue-btn" onClick={() => onOpen(i)}>
                   {i.message} <span className="issue-go">Show ›</span>
+                  {i.detail && <span className="issue-detail">{i.detail}</span>}
                 </button>
               ) : (
-                <span>{i.message}</span>
+                <span>{i.message}{i.detail && <span className="issue-detail">{i.detail}</span>}</span>
               )}
             </li>
           ))}
