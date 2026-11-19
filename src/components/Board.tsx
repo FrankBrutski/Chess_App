@@ -5,6 +5,7 @@ import type { Config } from 'chessground/config';
 import type { Key } from 'chessground/types';
 import type { DrawShape } from 'chessground/draw';
 import type { Shape } from '../lib/model';
+import { turnOf } from '../lib/fen';
 import 'chessground/assets/chessground.base.css';
 import 'chessground/assets/chessground.brown.css';
 import 'chessground/assets/chessground.cburnett.css';
@@ -48,7 +49,7 @@ export function Board({ fen, orientation, lastMove, shapes = [], hintShapes = []
   }, []);
 
   useEffect(() => {
-    const turn = fen.split(' ')[1] === 'b' ? 'black' : 'white';
+    const turn = turnOf(fen);
     const cfg: Config = {
       fen,
       orientation,

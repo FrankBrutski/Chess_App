@@ -4,9 +4,8 @@ import { annotateChapter } from './annotations';
 import { moveNumber } from './tree';
 import type { ParseOptions } from './commentMoves';
 import { splitLines, type SplitOptions } from './lines';
+import { epd, turnOf } from './fen';
 
-const epd = (fen: string) => fen.split(' ').slice(0, 4).join(' ');
-const sideToMove = (fen: string) => (fen.split(' ')[1] === 'b' ? 'black' : 'white');
 const label = (n: TreeNode) => (n.id === 'root' ? 'the start' : `${moveNumber((n as MoveNode).ply)}${(n as MoveNode).san}`);
 
 /** The last few moves up to and including n, e.g. "…8.Be2 exd5 9.cxd5 Re8". */
@@ -109,7 +108,7 @@ export function checkChapter(p: ParsedChapter, opts: ParseOptions & { lines?: Sp
   // Same position reached twice with different repertoire moves (matters for training).
   const repMove = new Map<string, { san: string; at: TreeNode }>();
   walk(p.root, (n) => {
-    if (sideToMove(n.fen) !== p.orientation || !n.children.length) return;
+    if (turnOf(n.fen) !== p.orientation || !n.children.length) return;
     const main = n.children[0];
     const k = epd(n.fen);
     const seen = repMove.get(k);

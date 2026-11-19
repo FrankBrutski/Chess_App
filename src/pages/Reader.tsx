@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../lib/db';
+import { turnOf } from '../lib/fen';
 import type { MoveNode, TreeNode } from '../lib/model';
 import { indexTree, pathTo, moveNumber } from '../lib/tree';
 import { annotateChapter } from '../lib/annotations';
@@ -126,7 +127,7 @@ export function Reader({ chapterId, startNodeId, lineId, lineNodeId }: { chapter
   // With the engine open, the board is an analysis board: play any legal move and the evaluation follows.
   // A move that is the next study move just steps forward; anything else plays on from here as a side line,
   // and Back takes those moves back one by one, to where you started.
-  const turn = boardFen.split(' ')[1] === 'b' ? 'black' : 'white';
+  const turn = turnOf(boardFen);
   const movable = engineOn ? { color: turn as 'white' | 'black', dests: destsOf(boardFen) } : undefined;
   const playOnBoard = (orig: Key, dest: Key) => {
     const san = sanOfBoardMove(boardFen, orig as Key, dest as Key);

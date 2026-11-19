@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Key } from 'chessground/types';
 import type { LineTag, MoveNode, RootNode, Sting } from '../lib/model';
 import { db } from '../lib/db';
+import { turnOf } from '../lib/fen';
 import { indexTree, moveNumber } from '../lib/tree';
 import { annotateChapter } from '../lib/annotations';
 import { destsOf, sanOfBoardMove } from '../lib/boardMove';
@@ -39,7 +40,7 @@ export function StingExplorer({ card }: { card: Sting }) {
   const node = idx.byId.get(currentId) ?? root;
   useEffect(() => { setNote(node.comments.join('\n\n')); }, [node]);
   const annotations = useMemo(() => annotateChapter(root, { auto: getAutoLink() }), [root]);
-  const orientation = card.orientation ?? (root.fen.split(' ')[1] === 'b' ? 'black' : 'white');
+  const orientation = card.orientation ?? turnOf(root.fen);
   const start = node.id === 'root' ? undefined : lineStart(root, node.id);
   const problems = readyProblems(root);
 
@@ -76,7 +77,7 @@ export function StingExplorer({ card }: { card: Sting }) {
 
   const [flipped, setFlipped] = useState(false);
   const boardFen = ghost ? ghost.line[ghost.index].fen : node.fen;
-  const turn = boardFen.split(' ')[1] === 'b' ? 'black' : 'white';
+  const turn = turnOf(boardFen);
 
   return (
     <div className="stack explorer">
