@@ -45,6 +45,16 @@ class ChessDb extends Dexie {
       stings: 'id, status, createdAt',
       shots: 'id',
     });
+    // v5: study links move from sections to the hive (one Sync per hive); combs can be Unsectioned.
+    this.version(5)
+      .stores({})
+      .upgrade(async (tx) => {
+        const chapters = (await tx.table('chapters').toArray()) as Chapter[];
+        const courses = (await tx.table('courses').toArray()) as Course[];
+        courses.forEach((c, i) => migrateHive(c, chapters, c.order ?? i, newId));
+        await tx.table('courses').bulkPut(courses);
+        await tx.table('chapters').bulkPut(chapters);
+      });
   }
 }
 
@@ -72,11 +82,13 @@ export async function requestPersistence(): Promise<boolean> {
 export async function chaptersOf(courseId: string): Promise<Chapter[]> {
   const [hive, list] = await Promise.all([db.courses.get(courseId), db.chapters.where('courseId').equals(courseId).toArray()]);
   const rank = new Map((hive?.sections ?? []).map((s, i) => [s.id, i]));
-  return list.sort((a, b) => (rank.get(a.sectionId) ?? 999) - (rank.get(b.sectionId) ?? 999) || a.order - b.order);
+  // Combs in no section come first (shown as a plain list at the top), then each section in order.
+  return list.sort((a, b) => (rank.get(a.sectionId) ?? -1) - (rank.get(b.sectionId) ?? -1) || a.order - b.order);
 }
 
-export async function chaptersOfSection(sectionId: string): Promise<Chapter[]> {
-  const list = await db.chapters.where('sectionId').equals(sectionId).toArray();
+/** Combs of one section of a hive ('' = the hive's Unsectioned combs), in order. */
+export async function chaptersOfSection(courseId: string, sectionId: string): Promise<Chapter[]> {
+  const list = await db.chapters.where('courseId').equals(courseId).filter((c) => (c.sectionId ?? '') === sectionId).toArray();
   return list.sort((a, b) => a.order - b.order);
 }
 

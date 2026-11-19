@@ -1,6 +1,7 @@
 import { db } from './db';
 import type { Chapter, Course } from './model';
 import { splitLines } from './lines';
+import { inSection } from './hives';
 import type { Cell, TrainLine } from './srs';
 import { getLineOrder, type TrainScope } from './prefs';
 
@@ -26,8 +27,8 @@ export function inScope(hives: Course[], chapters: Chapter[], s: TrainScope): Ch
     const rank = new Map(h.sections.map((x, i) => [x.id, i]));
     out.push(
       ...chapters
-        .filter((c) => c.courseId === h.id && (!s.section || c.sectionId === s.section) && (!s.comb || c.id === s.comb))
-        .sort((a, b) => (rank.get(a.sectionId) ?? 999) - (rank.get(b.sectionId) ?? 999) || a.order - b.order),
+        .filter((c) => c.courseId === h.id && (!s.section || inSection(c, s.section, h)) && (!s.comb || c.id === s.comb))
+        .sort((a, b) => (rank.get(a.sectionId) ?? -1) - (rank.get(b.sectionId) ?? -1) || a.order - b.order),
     );
   }
   return out;

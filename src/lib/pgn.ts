@@ -152,6 +152,7 @@ export function toChapter(
     title: p.title,
     orientation,
     lichessChapterId: p.lichessChapterId,
+    ...(p.lichessStudyId ? { lichessStudyId: p.lichessStudyId } : {}),
     root: p.root,
     issues,
     importedAt: Date.now(),

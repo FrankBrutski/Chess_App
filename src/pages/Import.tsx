@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, chaptersOfSection } from '../lib/db';
+import { db } from '../lib/db';
 import { parseChapters, type ParsedChapter } from '../lib/pgn';
 import { fetchStudyPgn, parseStudyUrl, studyUrl } from '../lib/lichess';
 import { annotateChapter, countInlineLines } from '../lib/annotations';
 import { checkChapter, hasBlockingError } from '../lib/checker';
 import { IssueList } from '../components/IssueList';
-import { combsOutside, createHive, importInto, planSync } from '../lib/importer';
-import { TIER_CHOICES, groupHives, tierName } from '../lib/hives';
+import { combsOutsideHive, createHive, importInto, planSync } from '../lib/importer';
+import { TIER_CHOICES, UNSECTIONED, groupHives, tierName } from '../lib/hives';
+import type { StudySource } from '../lib/model';
 import { countMoves } from '../lib/tree';
 import { navigate } from '../router';
 import { getAutoLink, getLichessEnabled, getToken } from '../lib/prefs';
@@ -15,25 +16,26 @@ import { getAutoLink, getLichessEnabled, getToken } from '../lib/prefs';
 type Source = 'link' | 'file' | 'paste';
 
 const NEW = '__new__';
+const NONE = '';
 
 /**
- * #/import                     new import: pick a hive and section after reading the PGN
- * #/import/:hiveId             same, with that hive preselected
- * #/import/:hiveId/:sectionId  update (sync / re-upload) that section
+ * #/import               new import: pick a hive (and optionally a section) after reading the PGN
+ * #/import/:hiveId       same, with that hive preselected
+ * #/import/:hiveId/sync  sync (or re-upload) the whole hive
  */
-export function ImportPage({ courseId, sectionId }: { courseId?: string; sectionId?: string }) {
-  const updating = !!(courseId && sectionId);
+export function ImportPage({ courseId, sync = false }: { courseId?: string; sync?: boolean }) {
+  const updating = !!(courseId && sync);
   const hives = useLiveQuery(() => db.courses.toArray(), []);
   const course = hives?.find((h) => h.id === courseId);
-  const section = course?.sections.find((x) => x.id === sectionId);
-  const existing = useLiveQuery(async () => (updating ? chaptersOfSection(sectionId!) : []), [sectionId, updating]);
-  const elsewhere = useLiveQuery(async () => (updating ? combsOutside(sectionId!) : []), [sectionId, updating]);
+  const sources = course?.sources ?? [];
+  const existing = useLiveQuery(async () => (updating ? db.chapters.where('courseId').equals(courseId!).toArray() : []), [courseId, updating]);
+  const elsewhere = useLiveQuery(async () => (updating ? combsOutsideHive(courseId!) : []), [courseId, updating]);
 
   // Where the import goes (new imports only).
   const [hiveChoice, setHiveChoice] = useState<string>(courseId ?? NEW);
   const [hiveColor, setHiveColor] = useState<'white' | 'black'>('white');
   const [hiveTier, setHiveTier] = useState(1);
-  const [sectionChoice, setSectionChoice] = useState<string>(NEW);
+  const [sectionChoice, setSectionChoice] = useState<string>(NONE);
   const [sectionName, setSectionName] = useState('');
 
   const lichessOn = getLichessEnabled();
@@ -45,17 +47,18 @@ export function ImportPage({ courseId, sectionId }: { courseId?: string; section
   const [parsed, setParsed] = useState<ParsedChapter[]>();
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [name, setName] = useState('');
-  const [linkedUrl, setLinkedUrl] = useState<string>();
+  /** The Lichess link (study or one chapter) this import came from, saved on the hive for Sync. */
+  const [linked, setLinked] = useState<StudySource>();
+  /** true = these chapters were just downloaded from the hive's own links (a Lichess sync, which may remove). */
+  const [fromSources, setFromSources] = useState(false);
 
   useEffect(() => {
-    if (!updating) return;
-    if (section?.sourceUrl) setLink(section.sourceUrl);
-    if ((section && !section.sourceUrl) || !lichessOn) setSource('file');
-  }, [section, updating, lichessOn]);
+    if (updating && course && (!course.sources?.length || !lichessOn)) setSource('file');
+  }, [course, updating, lichessOn]);
 
-  const load = (text: string, url?: string) => {
+  const load = (text: string, ref?: StudySource) => {
     try {
-      const chapters = parseChapters(text);
+      const chapters = dedupe(parseChapters(text));
       if (!chapters.length) throw new Error('No chapters with moves were found in that PGN.');
       setParsed(chapters);
       // Chapters whose main line is broken start unticked; you can still tick them.
@@ -65,7 +68,10 @@ export function ImportPage({ courseId, sectionId }: { courseId?: string; section
       setName(studyName);
       setSectionName(studyName);
       setHiveColor(chapters[0].orientation);
-      setLinkedUrl(url ?? (chapters[0].lichessStudyId ? studyUrl({ studyId: chapters[0].lichessStudyId }) : undefined));
+      const fileStudy = chapters[0].lichessStudyId;
+      // A one-chapter file is remembered as just that chapter, so a later Sync doesn't pull in the whole study.
+      setLinked(ref ?? (fileStudy ? (chapters.length === 1 && chapters[0].lichessChapterId ? { studyId: fileStudy, chapterId: chapters[0].lichessChapterId } : { studyId: fileStudy }) : undefined));
+      setFromSources(false);
       setError(undefined);
     } catch (e) {
       setParsed(undefined);
@@ -80,7 +86,24 @@ export function ImportPage({ courseId, sectionId }: { courseId?: string; section
     setError(undefined);
     try {
       const pgn = await fetchStudyPgn(ref, getToken());
-      load(pgn, studyUrl({ studyId: ref.studyId }));
+      load(pgn, ref);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Sync: download every study link the hive remembers, in one go. */
+  const fromHiveSources = async () => {
+    setBusy(true);
+    setError(undefined);
+    try {
+      const texts: string[] = [];
+      for (const ref of sources) texts.push(await fetchStudyPgn(ref, getToken()));
+      load(texts.join('\n\n'));
+      setLinked(undefined);
+      setFromSources(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -109,7 +132,7 @@ export function ImportPage({ courseId, sectionId }: { courseId?: string; section
   const [result, setResult] = useState<{ fixed: number; open: number }>();
   const targetHive = hives?.find((h) => h.id === hiveChoice);
   const plan = useMemo(() => {
-    if (updating && existing) return planSync(existing, selected, true, elsewhere);
+    if (updating && existing) return planSync(existing, selected, fromSources ? sources : false, elsewhere);
     return undefined;
   }, [updating, existing, selected, elsewhere]);
 
@@ -117,12 +140,9 @@ export function ImportPage({ courseId, sectionId }: { courseId?: string; section
     if (!selected.length) return;
     setBusy(true);
     try {
-      const studyId = linkedUrl ? parseStudyUrl(linkedUrl)?.studyId : undefined;
       if (updating) {
-        const r = await importInto(
-          { hiveId: courseId!, sectionId, sourceUrl: source === 'link' ? linkedUrl : undefined, lichessStudyId: studyId, replace: true },
-          selected,
-        );
+        // Only a Lichess sync removes chapters (of the hive's own studies); a file re-upload only adds and updates.
+        const r = await importInto({ hiveId: courseId!, sync: { removeScope: fromSources ? sources : [] } }, selected);
         if (r.fixed || r.open) { setResult(r); setBusy(false); return; }
         navigate(`/course/${courseId}`);
       } else {
@@ -131,10 +151,8 @@ export function ImportPage({ courseId, sectionId }: { courseId?: string; section
           {
             hiveId,
             sectionId: sectionChoice === NEW ? undefined : sectionChoice,
-            newSectionName: sectionName,
-            sourceUrl: linkedUrl,
-            lichessStudyId: studyId,
-            replace: false,
+            newSectionName: sectionChoice === NEW ? sectionName || 'New section' : undefined,
+            source: linked,
           },
           selected,
         );
@@ -149,22 +167,36 @@ export function ImportPage({ courseId, sectionId }: { courseId?: string; section
   return (
     <div className="page">
       <header className="page-header">
-        <button type="button" className="icon-btn" onClick={() => navigate(courseId ? `/course/${courseId}` : '/')} aria-label="Back">‹</button>
-        <h1>{updating ? 'Update section' : 'Import a study'}</h1>
+        <button type="button" className="icon-btn" onClick={() => navigate(courseId ? `/course/${courseId}${updating ? '/edit' : ''}` : '/')} aria-label="Back">‹</button>
+        <h1>{updating ? 'Sync hive' : 'Import a study'}</h1>
         <span />
       </header>
 
       {!parsed && (
         <>
           <div className="segmented" role="tablist">
-            {((lichessOn ? ['link', 'file', 'paste'] : ['file', 'paste']) as Source[]).map((s) => (
+            {((lichessOn && (!updating || sources.length) ? ['link', 'file', 'paste'] : ['file', 'paste']) as Source[]).map((s) => (
               <button key={s} type="button" role="tab" aria-selected={source === s} className={source === s ? 'on' : ''} onClick={() => setSource(s)}>
                 {s === 'link' ? 'Lichess link' : s === 'file' ? 'PGN file' : 'Paste PGN'}
               </button>
             ))}
           </div>
 
-          {source === 'link' && (
+          {source === 'link' && updating && (
+            <div className="stack">
+              <p className="muted small">
+                Downloads {sources.length === 1 ? 'the study' : `all ${sources.length} studies`} this hive came from. Combs you already
+                have are updated where they are, with their progress; new chapters are added at the top, outside any section.
+              </p>
+              <ul className="source-list">
+                {sources.map((r) => <li key={`${r.studyId}/${r.chapterId ?? ''}`}>{studyUrl(r).replace('https://', '')}</li>)}
+              </ul>
+              <button type="button" className="primary wide" disabled={busy || !sources.length} onClick={fromHiveSources}>
+                {busy ? 'Downloading…' : 'Sync from Lichess'}
+              </button>
+            </div>
+          )}
+          {source === 'link' && !updating && (
             <div className="stack">
               <label className="field">
                 <span>Study link</span>
@@ -225,15 +257,15 @@ export function ImportPage({ courseId, sectionId }: { courseId?: string; section
           </div>
           {updating ? (
             <p className="muted small">
-              Updating <strong>{section?.name}</strong> in the hive <strong>{course?.name}</strong>. Combs you've already
-              trained keep their progress.
+              Updating the hive <strong>{course?.name}</strong>. Combs keep their section, position and progress; new ones are
+              added at the top, outside any section.{fromSources ? '' : ' A file never removes combs.'}
             </p>
           ) : (
             <fieldset className="target">
               <legend>Where should it go?</legend>
               <label className="field">
                 <span>Hive (repertoire)</span>
-                <select value={hiveChoice} onChange={(e) => { setHiveChoice(e.target.value); setSectionChoice(NEW); }}>
+                <select value={hiveChoice} onChange={(e) => { setHiveChoice(e.target.value); setSectionChoice(NONE); }}>
                   <option value={NEW}>+ New hive</option>
                   {groupHives(hives ?? []).flatMap((g) =>
                     g.tiers.flatMap((t) =>
@@ -272,8 +304,9 @@ export function ImportPage({ courseId, sectionId }: { courseId?: string; section
               <label className="field">
                 <span>Section</span>
                 <select value={sectionChoice} onChange={(e) => setSectionChoice(e.target.value)}>
-                  <option value={NEW}>+ New section</option>
+                  <option value={NONE}>{UNSECTIONED}</option>
                   {targetHive?.sections.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                  <option value={NEW}>+ New section</option>
                 </select>
               </label>
               {sectionChoice === NEW && (
@@ -326,4 +359,15 @@ export function ImportPage({ courseId, sectionId }: { courseId?: string; section
       )}
     </div>
   );
+}
+
+/** The same Lichess chapter twice (e.g. two links that overlap) is only imported once. */
+function dedupe(chapters: ParsedChapter[]): ParsedChapter[] {
+  const seen = new Set<string>();
+  return chapters.filter((c) => {
+    if (!c.lichessChapterId) return true;
+    if (seen.has(c.lichessChapterId)) return false;
+    seen.add(c.lichessChapterId);
+    return true;
+  });
 }

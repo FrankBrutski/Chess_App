@@ -6,7 +6,7 @@ import { navigate } from '../router';
 import { getLearnBatch, getScope, setScope, type TrainScope } from '../lib/prefs';
 import { loadTrainData, type TrainData } from '../lib/training';
 import { lineState, planLearn, planReview, userKeys } from '../lib/srs';
-import { groupHives, tierName } from '../lib/hives';
+import { UNSECTIONED, UNSECTIONED_SCOPE, groupHives, inSection, tierName } from '../lib/hives';
 import { TrainSession, type SessionItem } from '../components/TrainSession';
 import { HexMark } from '../components/HexMark';
 
@@ -29,8 +29,13 @@ export function TrainPage({ kind, a, b }: { kind?: string; a?: string; b?: strin
   const hives = useLiveQuery(() => db.courses.toArray(), []);
   // Only the combs of the chosen section (for the Comb picker), not every comb's tree.
   const combs = useLiveQuery(
-    async () => (scope.section ? (await db.chapters.where('sectionId').equals(scope.section).toArray()).sort((x, y) => x.order - y.order) : []),
-    [scope.section],
+    async () => {
+      if (!scope.section || !scope.hive) return [];
+      const h = await db.courses.get(scope.hive);
+      const list = await db.chapters.where('courseId').equals(scope.hive).filter((c) => inSection(c, scope.section, h)).toArray();
+      return list.sort((x, y) => x.order - y.order);
+    },
+    [scope.section, scope.hive],
   );
   const honeyToday = useLiveQuery(async () => (await db.honey.get(today()))?.amount ?? 0, []);
   const honeyTotal = useLiveQuery(async () => (await db.honey.toArray()).reduce((n, h) => n + h.amount, 0), []);
@@ -120,7 +125,7 @@ export function TrainPage({ kind, a, b }: { kind?: string; a?: string; b?: strin
   const scopeText =
     [
       hive?.name ?? (scope.hive === 'white' ? 'All White hives' : scope.hive === 'black' ? 'All Black hives' : 'All hives'),
-      sections.find((x) => x.id === scope.section)?.name,
+      scope.section === UNSECTIONED_SCOPE ? UNSECTIONED : sections.find((x) => x.id === scope.section)?.name,
       combs?.find((c) => c.id === scope.comb)?.title,
     ]
       .filter(Boolean)
@@ -166,6 +171,7 @@ export function TrainPage({ kind, a, b }: { kind?: string; a?: string; b?: strin
             <select value={scope.section} onChange={(e) => update({ ...scope, section: e.target.value, comb: '' })}>
               <option value="">All sections</option>
               {sections.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {sections.length > 0 && <option value={UNSECTIONED_SCOPE}>{UNSECTIONED}</option>}
             </select>
           </label>
         )}

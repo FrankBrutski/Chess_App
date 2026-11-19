@@ -20,7 +20,8 @@ describe('database upgrade from phase 1', () => {
     const hive = (await db.courses.get('c1'))!;
     expect(hive).toMatchObject({ name: 'Italian', color: 'black', tier: 1, order: 0 });
     expect(hive.sections).toHaveLength(1);
-    expect(hive.sections[0]).toMatchObject({ name: 'Italian', sourceUrl: 'https://lichess.org/study/AbCdEfGh' });
+    expect(hive.sections[0]).toEqual({ id: hive.sections[0].id, name: 'Italian' });
+    expect(hive.sources).toEqual([{ studyId: 'AbCdEfGh' }]);
     const combs = await chaptersOf('c1');
     expect(combs.map((c) => [c.id, c.sectionId])).toEqual([
       ['ch0', hive.sections[0].id],

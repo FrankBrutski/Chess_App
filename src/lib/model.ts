@@ -54,13 +54,17 @@ export interface Chapter {
   id: string;
   /** The hive (repertoire) this comb belongs to. */
   courseId: string;
-  /** The section within the hive. */
+  /** The section within the hive; '' = Unsectioned. */
   sectionId: string;
   /** Position within its section. */
   order: number;
   title: string;
   orientation: 'white' | 'black';
   lichessChapterId?: string;
+  /** The Lichess study this comb came from (limits what a sync may remove). */
+  lichessStudyId?: string;
+  /** Added by the last sync and not yet put in a section (shows a NEW tag). */
+  fresh?: boolean;
   root: RootNode;
   issues?: Issue[];
   /** Your own names for lines, by line id (see lib/lines.ts). Kept across re-syncs. */
@@ -74,15 +78,22 @@ export interface Chapter {
   importedAt: number;
 }
 
-/** A group of combs inside a hive, usually one Lichess study or one theme. */
+/** A group of combs inside a hive: a folder you make by hand. Syncing is done for the whole hive. */
 export interface Section {
   id: string;
   name: string;
-  /** Lichess study this section syncs from, if any. */
+  /** @deprecated the link now lives on the hive (Course.sources); kept so old data can be migrated. */
   sourceUrl?: string;
+  /** @deprecated see sourceUrl. */
   lichessStudyId?: string;
   /** true = don't drill this section. */
   skip?: boolean;
+}
+
+/** A Lichess study link a hive syncs from. With chapterId, only that one chapter. */
+export interface StudySource {
+  studyId: string;
+  chapterId?: string;
 }
 
 /** A hive = one repertoire, e.g. "King's Gambit" as White, main. */
@@ -96,6 +107,8 @@ export interface Course {
   /** Position among hives of the same colour and tier. */
   order: number;
   sections: Section[];
+  /** Lichess studies (or single chapters) this hive syncs from. */
+  sources?: StudySource[];
   /** true = don't drill this hive (it stays readable). */
   skip?: boolean;
   /** @deprecated moved to Section; kept so old data can be migrated. */

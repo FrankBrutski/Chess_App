@@ -658,3 +658,22 @@ div.shot-full { aspect-ratio: 3 / 4; }
 .hive-edit-actions { justify-content: flex-start; gap: 8px; }
 .hive-edit-actions > button:not(.danger-link) { padding: 8px 12px; }
 .hive-edit-actions > .danger-link { margin-left: auto; }
+
+/* Hive sections: ⋯ menu, + Section picker, Unsectioned group, NEW tag. */
+details.section > summary { align-items: center; }
+details.section > summary .muted { margin-left: 8px; }
+.section-more { min-height: 36px; min-width: 40px; margin-left: 4px; }
+.loose-combs { margin: 0 0 14px; }
+.new-tag { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 6px; background: var(--honey); color: #2a1d0e; font-size: 10.5px; font-weight: 700; vertical-align: 2px; }
+.bottom-sheet.section-picker, .bottom-sheet.section-menu { max-height: 85vh; }
+.section-picker .pick-list { overflow-y: auto; min-height: 0; flex: 1 1 auto; }
+.pick-list.compact label { align-items: center; padding: 10px 12px; }
+.pick-list.compact input { margin-top: 0; }
+.pick-list.compact .pick-main { flex: 1; font-size: 15px; }
+.pick-from { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.menu-rows { display: flex; flex-direction: column; }
+.menu-rows > button, .menu-rows > .check { display: flex; justify-content: space-between; align-items: center; text-align: left; min-height: 48px; padding: 0 4px; border: none; border-top: 1px solid var(--line); border-radius: 0; background: none; font-size: 15px; }
+.menu-rows > button span { font-size: 12px; color: var(--muted); }
+.menu-rows > .check { justify-content: flex-start; }
+.menu-rows > .danger-link { color: var(--bad); }
+.source-list { margin: 0; padding-left: 18px; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }

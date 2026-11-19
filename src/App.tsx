@@ -52,7 +52,7 @@ function route(page: string | undefined, id: string, sub: string, sub2: string) 
     case 'line':
       return <Reader chapterId={id} lineId={sub ? decodeURIComponent(sub) : undefined} lineNodeId={sub2} />;
     case 'import':
-      return <ImportPage courseId={id} sectionId={sub} />;
+      return <ImportPage courseId={id} sync={!!sub} />;
     case 'issues':
       return <IssuesPage courseId={id} />;
     case 'train':
