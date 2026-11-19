@@ -567,8 +567,7 @@ div.shot-full { aspect-ratio: 3 / 4; }
 
 /* ---------- a comb's lines ---------- */
 .comb-heading { font-size: 20px; margin: 0; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.comb-actions { margin: 0 0 10px; }
-.comb-read { margin-bottom: 12px; }
+.comb-actions { margin: 0 0 14px; }
 .line-rows { margin-top: 12px; }
 .line-row-wrap { display: flex; align-items: center; gap: 6px; padding-right: 12px; }
 .line-row-wrap .comb-line { flex: 1; min-width: 0; }

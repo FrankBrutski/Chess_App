@@ -93,7 +93,6 @@ export function CombLines({ chapterId }: { chapterId: string }) {
           </button>
         </div>
       )}
-      <button type="button" className="wide comb-read" onClick={() => navigate(`/read/${chapter.id}/root`)}>Read whole study</button>
 
       {lines.length > 6 && (
         <input
