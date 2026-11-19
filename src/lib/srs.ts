@@ -53,6 +53,13 @@ export function learnCell(key: string, now: number, ladder: number[]): Cell {
   return { key, level: 1, due: now + ladder[0], learnedAt: now, lapses: 0 };
 }
 
+/**
+ * Honey for a right move. Immediate quiz try n pays n (1, 2, 3…). A review pays one more than the
+ * last try, and one more again for each step up the ladder: with 3 tries, reviews pay 4, 5, 6, 7…
+ */
+export const quizHoney = (tryNo: number) => tryNo;
+export const reviewHoney = (c: Cell, tries: number) => tries + Math.max(1, c.level);
+
 /** Schedule after a review: up one step when right; down per the miss policy when wrong. */
 export function reviewCell(c: Cell, correct: boolean, now: number, ladder: number[], policy: MissPolicy): Cell {
   const top = ladder.length;

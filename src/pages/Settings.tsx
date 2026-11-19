@@ -6,8 +6,8 @@ import { getStingEngineCheck, getStingHoney, getStingNew, setStingEngineCheck, s
 import { appVersion, buildTime, checkForUpdate } from '../lib/update';
 import { getEngineDepth, getEngineLines, setEngineDepth, setEngineLines } from '../lib/prefs';
 import {
-  getHoneyLearn, getHoneyReview, getLearnBatch, setLearnBatch, getLadder, getMissPolicy, getRetryBack, getReviewNotes, getShowNewMoves, setHoneyLearn,
-  setHoneyReview, setLadder, setMissPolicy, setRetryBack, setReviewNotes, setShowNewMoves,
+  getMoveSeconds, getQuizTries, getLearnBatch, setLearnBatch, getLadder, getMissPolicy, getRetryBack, getReviewNotes, getShowNewMoves, setMoveSeconds, setQuizTries,
+  setLadder, setMissPolicy, setRetryBack, setReviewNotes, setShowNewMoves,
 } from '../lib/prefs';
 import { getShowMarkers, setShowMarkers, getFlipReader, setFlipReader } from '../lib/prefs';
 import { getTheme, setTheme, type Theme } from '../lib/prefs';
@@ -31,7 +31,7 @@ export function Settings() {
   const [batch, setBatch] = useState(getLearnBatch());
   const [reviewNotes, setRN] = useState(getReviewNotes());
   const [showNew, setSN] = useState(getShowNewMoves());
-  const [hl, setHl] = useState(getHoneyLearn());
+  const [tries, setTriesState] = useState(getQuizTries());
   const [order, setOrder] = useState(getLineOrder());
   const [markers, setMarkers] = useState(getShowMarkers());
   const [flipReader, setFlipR] = useState(getFlipReader());
@@ -43,7 +43,7 @@ export function Settings() {
   const [stingNew, setStingNewState] = useState(getStingNew);
   const [stingCheck, setStingCheckState] = useState(getStingEngineCheck);
   const changeText = (patch: Partial<TextPrefs>) => { const t = { ...text, ...patch }; setText(t); setTextPrefs(t); };
-  const [hr, setHr] = useState(getHoneyReview());
+  const [secs, setSecsState] = useState(getMoveSeconds());
   const saveLadder = (text: string) => {
     setLadderText(text);
     try {
@@ -325,7 +325,7 @@ export function Settings() {
       <details className="set-group">
         <summary>
           <h2>Training</h2>
-          <span className="muted small">New lines per session, review ladder, misses, honey</span>
+          <span className="muted small">New lines per session, quiz tries, clock, review ladder</span>
         </summary>
         <div className="stack">
         <p className="muted small">
@@ -357,7 +357,7 @@ export function Settings() {
             </select>
           </label>
           <label className="field">
-            <span>After a miss, replay from</span>
+            <span>After a review miss, replay from</span>
             <select value={retry} onChange={(e) => { setRetry(+e.target.value); setRetryBack(+e.target.value); }}>
               <option value={0}>That move</option>
               {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n} of your moves back</option>)}
@@ -375,18 +375,23 @@ export function Settings() {
         </label>
         <div className="row">
           <label className="field">
-            <span>Honey per move learned</span>
-            <select value={hl} onChange={(e) => { setHl(+e.target.value); setHoneyLearn(+e.target.value); }}>
-              {[0, 1, 2, 3, 5].map((n) => <option key={n} value={n}>{n}</option>)}
+            <span>Quiz tries for a new line</span>
+            <select value={tries} onChange={(e) => { setTriesState(+e.target.value); setQuizTries(+e.target.value); }}>
+              {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </label>
           <label className="field">
-            <span>Honey per correct review</span>
-            <select value={hr} onChange={(e) => { setHr(+e.target.value); setHoneyReview(+e.target.value); }}>
-              {[0, 1, 2, 3, 5].map((n) => <option key={n} value={n}>{n}</option>)}
+            <span>Time per quiz move</span>
+            <select value={secs} onChange={(e) => { setSecsState(+e.target.value); setMoveSeconds(+e.target.value); }}>
+              <option value={0}>No clock</option>
+              {[15, 30, 45, 60, 90, 120].map((n) => <option key={n} value={n}>{n} seconds</option>)}
             </select>
           </label>
         </div>
+        <p className="muted small">
+          Honey: try 1 of a new line pays 1 a move, try 2 pays 2, and so on. A miss starts the line over at try 1.
+          Reviews pay one more than the last try, and one more for each longer gap ({tries + 1}, {tries + 2}, {tries + 3}…).
+        </p>
         </div>
       </details>
       <details className="set-group">

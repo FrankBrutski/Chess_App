@@ -22,6 +22,8 @@ interface Props {
   boldNotation: boolean;
   /** Hide the "other lines here" markers (training keeps the screen to one line). */
   hideBranches?: boolean;
+  /** Never fold the start shared with the line before (the trainer shows the whole line). */
+  hideTrunk?: boolean;
   /** Show the small ⑂ / ⇄ markers (Settings → Lines). */
   showMarkers?: boolean;
   /** Other places in your repertoire with the position after this move (transpositions). */
@@ -41,7 +43,7 @@ function LineTextImpl(p: Props) {
   const branches = hideBranches ? new Map<string, { move: MoveNode; line: Line }[]>() : branchesAlong(line, lines);
   const limit = visibleUpTo ?? line.nodes.length - 1;
   const shown = line.nodes.slice(0, limit + 1);
-  const folded = line.shared > 0 && !trunkOpen;
+  const folded = !p.hideTrunk && line.shared > 0 && !trunkOpen;
 
   const moveButton = (n: MoveNode, withNumber: boolean) => (
     <button

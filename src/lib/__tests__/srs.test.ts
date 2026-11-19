@@ -100,3 +100,14 @@ describe('drill on/off', () => {
     expect(trainLinesOf([ch], true, [hive]).map((t) => t.line.id)).toEqual(['main']);
   });
 });
+
+describe('honey', () => {
+  it('pays 1, 2, 3 for the immediate tries and more for each longer review gap', async () => {
+    const { quizHoney, reviewHoney, learnCell } = await import('../srs');
+    expect([1, 2, 3].map(quizHoney)).toEqual([1, 2, 3]);
+    const c = learnCell('k', 0, [1, 2, 3, 4]);
+    expect(reviewHoney(c, 3)).toBe(4);
+    expect(reviewHoney({ ...c, level: 2 }, 3)).toBe(5);
+    expect(reviewHoney({ ...c, level: 4 }, 3)).toBe(7);
+  });
+});
