@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react';
-import { Icon } from '../components/Toolbar';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../lib/db';
 import { navigate } from '../router';
@@ -52,9 +51,7 @@ export function StingsPage({ tab: tabParam }: { tab?: string }) {
   return (
     <div className="page">
       <header className="page-header">
-        <button type="button" className="icon-btn" onClick={() => navigate('/')} aria-label="Home">‹</button>
-        <h1 className="brand"><StingMark /> Stings</h1>
-        <button type="button" className="icon-btn" onClick={() => navigate('/settings')} aria-label="Settings">{Icon.settings}</button>
+        <h1 className="brand"><StingMark /> Tactics</h1>
       </header>
 
       {(counts?.ready ?? 0) > 0 && (
