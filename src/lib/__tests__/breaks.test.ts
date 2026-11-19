@@ -37,3 +37,13 @@ it('auto-linked moves in plain text keep the breaks too', () => {
   expect(joined).toContain('Second line.\n\nNew paragraph');
   expect(joined).toContain('\n\nLast paragraph.');
 });
+
+describe('paragraph breaks', () => {
+  it('treats one or several line breaks as the same single break', async () => {
+    const { splitParagraphs } = await import('../notation');
+    expect(splitParagraphs('A.\nB.')).toEqual(['A.', 'B.']);
+    expect(splitParagraphs('A.\n\nB.')).toEqual(['A.', 'B.']);
+    expect(splitParagraphs('A. \n \n\n  B.\r\nC.')).toEqual(['A.', 'B.', 'C.']);
+    expect(splitParagraphs('no breaks')).toEqual(['no breaks']);
+  });
+});
