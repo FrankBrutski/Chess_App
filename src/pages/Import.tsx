@@ -6,7 +6,7 @@ import { fetchStudyPgn, parseStudyUrl, studyUrl } from '../lib/lichess';
 import { annotateChapter, countInlineLines } from '../lib/annotations';
 import { checkChapter, hasBlockingError } from '../lib/checker';
 import { IssueList } from '../components/IssueList';
-import { createHive, importInto, planSync } from '../lib/importer';
+import { combsOutside, createHive, importInto, planSync } from '../lib/importer';
 import { TIER_CHOICES, groupHives, tierName } from '../lib/hives';
 import { countMoves } from '../lib/tree';
 import { navigate } from '../router';
@@ -27,6 +27,7 @@ export function ImportPage({ courseId, sectionId }: { courseId?: string; section
   const course = hives?.find((h) => h.id === courseId);
   const section = course?.sections.find((x) => x.id === sectionId);
   const existing = useLiveQuery(async () => (updating ? chaptersOfSection(sectionId!) : []), [sectionId, updating]);
+  const elsewhere = useLiveQuery(async () => (updating ? combsOutside(sectionId!) : []), [sectionId, updating]);
 
   // Where the import goes (new imports only).
   const [hiveChoice, setHiveChoice] = useState<string>(courseId ?? NEW);
@@ -108,9 +109,9 @@ export function ImportPage({ courseId, sectionId }: { courseId?: string; section
   const [result, setResult] = useState<{ fixed: number; open: number }>();
   const targetHive = hives?.find((h) => h.id === hiveChoice);
   const plan = useMemo(() => {
-    if (updating && existing) return planSync(existing, selected, true);
+    if (updating && existing) return planSync(existing, selected, true, elsewhere);
     return undefined;
-  }, [updating, existing, selected]);
+  }, [updating, existing, selected, elsewhere]);
 
   const save = async () => {
     if (!selected.length) return;

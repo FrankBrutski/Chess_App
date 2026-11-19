@@ -152,4 +152,26 @@ describe('line settings across a re-sync', () => {
     expect(after.skipLines).toEqual([before[1].id]);
     expect(after.skip).toBe(true);
   });
+  it('a comb moved to another section or hive is updated where it is on sync, not duplicated', async () => {
+    const hive = await createHive({ name: 'H', color: 'white', tier: 1 });
+    const black = await createHive({ name: 'B', color: 'black', tier: 1 });
+    const a = await importInto({ hiveId: hive.id, newSectionName: 'A', replace: false }, parseChapters(STUDY_PGN));
+    const b = await importInto({ hiveId: hive.id, newSectionName: 'B', replace: false }, []);
+    const other = await importInto({ hiveId: black.id, newSectionName: 'X', replace: false }, []);
+    const [first, second] = await chaptersOf(hive.id);
+    await db.chapters.where('id').equals(first.id).modify((c) => { c.lineNames = { x: 'Mine' }; });
+    await moveComb(first.id, hive.id, b.sectionId);
+    await moveComb(second.id, black.id, other.sectionId);
+    const changed = STUDY_PGN.replace('(4. d3 { Quieter. })', '(4. d3 { Quieter. } 4... d6)');
+    const r = await importInto({ hiveId: hive.id, sectionId: a.sectionId, replace: true }, parseChapters(changed));
+    expect(r.added).toHaveLength(0);
+    const all = await db.chapters.toArray();
+    expect(all).toHaveLength(2);
+    const f = all.find((c) => c.id === first.id)!;
+    expect(f.sectionId).toBe(b.sectionId);
+    expect(f.lineNames).toEqual({ x: 'Mine' });
+    expect(JSON.stringify(f.root)).toContain('"d6"');
+    const s2 = all.find((c) => c.id === second.id)!;
+    expect([s2.courseId, s2.sectionId, s2.orientation]).toEqual([black.id, other.sectionId, 'black']);
+  });
 });

@@ -20,8 +20,12 @@ export interface SyncResult extends SyncPlan {
 
 const norm = (s: string) => s.trim().toLowerCase();
 
-/** Work out which combs of a section each imported chapter replaces. */
-export function planSync(existing: Chapter[], incoming: ParsedChapter[], removeMissing = true): SyncPlan {
+/**
+ * Work out which combs of a section each imported chapter replaces. `elsewhere` (when syncing) is every
+ * comb outside the section: a chapter you moved to another section or hive is found there by its Lichess
+ * chapter id and updated where it now lives, instead of coming back as a second copy.
+ */
+export function planSync(existing: Chapter[], incoming: ParsedChapter[], removeMissing = true, elsewhere: Chapter[] = []): SyncPlan {
   const used = new Set<string>();
   const updated: SyncPlan['updated'] = [];
   const added: ParsedChapter[] = [];
@@ -29,9 +33,11 @@ export function planSync(existing: Chapter[], incoming: ParsedChapter[], removeM
     const match =
       (p.lichessChapterId && existing.find((e) => !used.has(e.id) && e.lichessChapterId === p.lichessChapterId)) ||
       existing.find((e) => !used.has(e.id) && norm(e.title) === norm(p.title));
-    if (match) {
-      used.add(match.id);
-      updated.push({ parsed: p, existing: match });
+    const moved = !match && p.lichessChapterId ? elsewhere.find((e) => !used.has(e.id) && e.lichessChapterId === p.lichessChapterId) : undefined;
+    const found = match || moved;
+    if (found) {
+      used.add(found.id);
+      updated.push({ parsed: p, existing: found });
     } else added.push(p);
   }
   return { added, updated, removed: removeMissing ? existing.filter((e) => !used.has(e.id)) : [] };
@@ -95,25 +101,31 @@ export async function importInto(target: ImportTarget, incoming: ParsedChapter[]
   const nextSections = sections.map((s) => (s.id === finalSection.id ? finalSection : s));
 
   const existing = await chaptersOfSection(finalSection.id);
-  const plan = planSync(existing, incoming, target.replace);
+  const elsewhere = target.replace ? await combsOutside(finalSection.id) : [];
+  const plan = planSync(existing, incoming, target.replace, elsewhere);
   const idFor = new Map(plan.updated.map((u) => [u.parsed, u.existing.id]));
   const orderFor = new Map(plan.updated.map((u) => [u.parsed, u.existing.order]));
   const auto = getAutoLink();
   let next = existing.reduce((m, c) => Math.max(m, c.order + 1), 0);
   const keepFor = new Map(plan.updated.map((u) => [u.parsed, u.existing]));
-  const built = incoming.map((p, i) => ({
-    ...toChapter(
-      p,
-      hive.id,
-      finalSection.id,
-      target.replace ? i : orderFor.get(p) ?? next++,
-      idFor.get(p) ?? newId(),
-      checkChapter(p, { auto }),
-      hive.color,
-    ),
-    // Your line names and drill choices are tied to stable line ids, so they carry over to the new version.
-    ...keepSettings(keepFor.get(p)),
-  }));
+  const built = incoming.map((p, i) => {
+    const old = keepFor.get(p);
+    // A comb you moved out of this section is updated in place: same hive, section, position and colour.
+    const away = old && old.sectionId !== finalSection.id ? old : undefined;
+    return {
+      ...toChapter(
+        p,
+        away?.courseId ?? hive.id,
+        away?.sectionId ?? finalSection.id,
+        away ? away.order : target.replace ? i : orderFor.get(p) ?? next++,
+        idFor.get(p) ?? newId(),
+        checkChapter(p, { auto }),
+        away?.orientation ?? hive.color,
+      ),
+      // Your line names and drill choices are tied to stable line ids, so they carry over to the new version.
+      ...keepSettings(old),
+    };
+  });
   const before = new Set(plan.updated.flatMap((u) => (u.existing.issues ?? []).map((x) => `${u.existing.id}|${x.key}`)));
   const after = new Set(built.flatMap((c) => (c.issues ?? []).map((x) => `${c.id}|${x.key}`)));
   const fixed = [...before].filter((k) => !after.has(k)).length;
@@ -124,6 +136,10 @@ export async function importInto(target: ImportTarget, incoming: ParsedChapter[]
   });
   return { ...plan, fixed, open: after.size, sectionId: finalSection.id };
 }
+
+/** Combs from Lichess that live outside this section (to find ones you moved elsewhere). */
+export const combsOutside = (sectionId: string) =>
+  db.chapters.filter((c) => c.sectionId !== sectionId && !!c.lichessChapterId).toArray();
 
 function keepSettings(old: Chapter | undefined): Partial<Chapter> {
   if (!old) return {};
