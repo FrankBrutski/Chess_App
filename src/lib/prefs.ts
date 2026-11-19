@@ -79,6 +79,16 @@ export const getHoneyReview = () => Math.max(0, Number(read('honeyReview') ?? 2)
 export const setHoneyLearn = (n: number) => write('honeyLearn', String(n));
 export const setHoneyReview = (n: number) => write('honeyReview', String(n));
 
+/** Openings filter: colour and tiers to show (empty tiers = every tier). Remembered between visits. */
+export interface HiveFilter { color: 'all' | 'white' | 'black'; tiers: number[] }
+export const getHiveFilter = (): HiveFilter => {
+  try {
+    const f = JSON.parse(read('hiveFilter') ?? '{}') as Partial<HiveFilter>;
+    return { color: f.color === 'white' || f.color === 'black' ? f.color : 'all', tiers: Array.isArray(f.tiers) ? f.tiers.filter((t) => typeof t === 'number') : [] };
+  } catch { return { color: 'all', tiers: [] }; }
+};
+export const setHiveFilter = (f: HiveFilter) => write('hiveFilter', f.color === 'all' && !f.tiers.length ? null : JSON.stringify(f));
+
 export interface TrainScope {
   hive: string; // '' = all, 'white' / 'black' = by colour, else a hive id
   section: string; // '' = all
