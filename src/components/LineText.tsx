@@ -39,7 +39,11 @@ function LineTextImpl(p: Props) {
   const { line, lines, annotations, currentId, ghost, visibleUpTo, onSelect, onGhost, onOpenLine, boldNotation, hideBranches, elsewhere } = p;
   const showMarkers = p.showMarkers ?? true;
   const [open, setOpen] = useState<string>();
-  const [trunkOpen, setTrunkOpen] = useState(false);
+  // Open the shared start when the current move is in it (e.g. opened from an import issue).
+  const inTrunk = (id: string) => { const i = line.nodes.findIndex((n) => n.id === id); return i >= 0 && i < line.shared; };
+  const [trunkOpen, setTrunkOpen] = useState(() => inTrunk(currentId));
+  const [seenId, setSeenId] = useState(currentId);
+  if (seenId !== currentId) { setSeenId(currentId); if (!trunkOpen && inTrunk(currentId)) setTrunkOpen(true); }
   const branches = hideBranches ? new Map<string, { move: MoveNode; line: Line }[]>() : branchesAlong(line, lines);
   const limit = visibleUpTo ?? line.nodes.length - 1;
   const shown = line.nodes.slice(0, limit + 1);
