@@ -19,6 +19,7 @@ export function Library() {
     return m;
   }, []);
   const [reorder, setReorder] = useState(false);
+  const [sheet, setSheet] = useState(false); // the Show hives panel behind the sliders icon
   const [filter, setFilterState] = useState(getHiveFilter);
   const setFilter = (f: HiveFilter) => { setFilterState(f); setHiveFilter(f); };
   // Due moves in lines you drill (skipped lines, combs, sections and hives don't count).
@@ -57,38 +58,23 @@ export function Library() {
     (h) => (filter.color === 'all' || h.color === filter.color) && (!filter.tiers.length || filter.tiers.includes(h.tier)),
   );
   const groups = groupHives(shown);
+  const filtered = filter.color !== 'all' || filter.tiers.length > 0;
   const toggleTier = (t: number) =>
     setFilter({ ...filter, tiers: filter.tiers.includes(t) ? filter.tiers.filter((x) => x !== t) : [...filter.tiers, t] });
 
   return (
     <div className={`page${due ? ' has-fab' : ''}`}>
       <header className="page-header">
-        <button type="button" className="icon-btn" onClick={() => navigate('/')} aria-label="Home">‹</button>
-        <h1 className="brand"><HexMark /> Openings</h1>
-        {(hives?.length ?? 0) > 1 && (
-          <button type="button" className="icon-btn small-text" onClick={() => setReorder(!reorder)}>{reorder ? 'Done' : 'Reorder'}</button>
+        <h1 className="brand dash-title">
+          <HexMark /> Openings
+          <button type="button" className={`icon-btn${filtered ? ' dot' : ''}`} onClick={() => setSheet(true)} aria-label="Show hives: filter, reorder, import">{Icon.settings}</button>
+        </h1>
+        {reorder ? (
+          <button type="button" className="icon-btn small-text" onClick={() => setReorder(false)}>Done</button>
+        ) : (
+          <button type="button" className="icon-btn small-text" onClick={() => navigate('/board')} aria-label="Master board" title="Master board: look up a position">Board</button>
         )}
-        <button type="button" className="icon-btn small-text" onClick={() => navigate('/board')} aria-label="Master board" title="Master board: look up a position">Board</button>
-        <button type="button" className="icon-btn" onClick={() => navigate('/settings')} aria-label="Settings">{Icon.settings}</button>
       </header>
-      {(hives?.length ?? 0) > 1 && (
-        <div className="hive-filter" role="group" aria-label="Filter hives">
-          <div className={`seg seg-${filter.color}`} role="radiogroup" aria-label="Colour">
-            <span className="seg-thumb" aria-hidden="true" />
-            {(['all', 'white', 'black'] as const).map((c) => (
-              <button key={c} type="button" role="radio" aria-checked={filter.color === c} aria-label={c === 'all' ? 'Both colours' : c === 'white' ? 'White' : 'Black'}
-                onClick={() => setFilter({ ...filter, color: c })}>
-                {c === 'all' ? 'Both' : <span className={`color-dot ${c}`} />}
-              </button>
-            ))}
-          </div>
-          {allTiers.length > 1 && allTiers.map((t) => (
-            <button key={t} type="button" className={`chip${filter.tiers.includes(t) ? ' on' : ''}`} aria-pressed={filter.tiers.includes(t)} onClick={() => toggleTier(t)}>
-              {t === 1 ? 'Main' : t === 2 ? '2nd' : t === 3 ? '3rd' : tierName(t)}
-            </button>
-          ))}
-        </div>
-      )}
       {!!hives?.length && !shown.length && <p className="muted center">No hives match this filter.</p>}
       {hives?.length === 0 && (
         <div className="empty">
@@ -148,9 +134,43 @@ export function Library() {
           ))}
         </section>
       ))}
-      <button type="button" className="wide" onClick={() => navigate('/import')}>
-        Import a study
-      </button>
+      {hives?.length === 0 && (
+        <button type="button" className="wide" onClick={() => navigate('/import')}>
+          Import a study
+        </button>
+      )}
+      {sheet && (
+        <>
+          <div className="sheet-bg" onClick={() => setSheet(false)} />
+          <div className="bottom-sheet" role="dialog" aria-label="Show hives">
+            <div className="sheet-grip" aria-hidden="true" />
+            <h2>Show hives</h2>
+          {(hives?.length ?? 0) > 1 && (
+            <div className="hive-filter" role="group" aria-label="Filter hives">
+              <div className={`seg seg-${filter.color}`} role="radiogroup" aria-label="Colour">
+                <span className="seg-thumb" aria-hidden="true" />
+                {(['all', 'white', 'black'] as const).map((c) => (
+                  <button key={c} type="button" role="radio" aria-checked={filter.color === c} aria-label={c === 'all' ? 'Both colours' : c === 'white' ? 'White' : 'Black'}
+                    onClick={() => setFilter({ ...filter, color: c })}>
+                    {c === 'all' ? 'Both' : <span className={`color-dot ${c}`} />}
+                  </button>
+                ))}
+              </div>
+              {allTiers.length > 1 && allTiers.map((t) => (
+                <button key={t} type="button" className={`chip${filter.tiers.includes(t) ? ' on' : ''}`} aria-pressed={filter.tiers.includes(t)} onClick={() => toggleTier(t)}>
+                  {t === 1 ? 'Main' : t === 2 ? '2nd' : t === 3 ? '3rd' : tierName(t)}
+                </button>
+              ))}
+            </div>
+          )}
+            {(hives?.length ?? 0) > 1 && (
+              <button type="button" className="wide" onClick={() => { setReorder(true); setSheet(false); }}>Reorder hives</button>
+            )}
+            <button type="button" className="wide" onClick={() => navigate('/import')}>Import a study</button>
+            <button type="button" className="link-btn" onClick={() => setSheet(false)}>Close</button>
+          </div>
+        </>
+      )}
       {!reorder && !!due && (
         <button type="button" className="review-all" onClick={() => navigate('/train/all/review')}>
           Review all <span>({due})</span>

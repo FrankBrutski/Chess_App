@@ -454,17 +454,6 @@ details.section:not([open]) > summary::before { content: '▸'; }
   max-width: 616px; margin: 0 auto;
 }
 .update-banner span { flex: 1; font-size: 14px; }
-/* ---------- home: two doors ---------- */
-.doors { display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
-.door {
-  display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto auto; column-gap: 14px; row-gap: 2px;
-  text-align: left; padding: 22px 18px; border-radius: 18px; border: 1px solid var(--line); background: var(--surface);
-}
-.door-icon { grid-row: 1 / span 3; align-self: center; }
-.door-icon .hexmark { width: 44px; height: 44px; }
-.door-title { font-size: 22px; font-weight: 700; }
-.door-sub { color: var(--muted); font-size: 14px; }
-.door-stat { color: var(--honey-deep); font-weight: 600; font-size: 15px; min-height: 1.4em; }
 
 /* ---------- stings ---------- */
 .primary-file {
@@ -625,3 +614,33 @@ div.shot-full { aspect-ratio: 3 / 4; }
 .seg-black .seg-thumb { transform: translateX(200%); }
 .hive-filter .chip { min-height: 36px; font-weight: 600; background: var(--surface); border: 1px solid var(--line); color: var(--text); }
 .hive-filter .chip.on { background: var(--text); border-color: var(--text); color: var(--bg); }
+
+/* Docked tab bar on the main screens (Openings, Tactics, Profile, Settings). */
+.tab-bar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: grid; grid-template-columns: repeat(4, 1fr);
+  padding: 6px 0 max(6px, calc(var(--safe-bottom) - 8px)); background: var(--bg); border-top: 1px solid var(--line);
+}
+.tab-bar button { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 0; padding: 2px 0; border: none; background: none; font-size: 12px; font-weight: 600; color: var(--muted); }
+.tab-bar button.on { color: var(--honey-deep); }
+:root[data-tabs] .page { padding-bottom: calc(84px + var(--safe-bottom)); }
+:root[data-tabs] .page.has-fab { padding-bottom: calc(150px + var(--safe-bottom)); }
+:root[data-tabs] .review-all { bottom: calc(80px + var(--safe-bottom)); }
+/* Openings: the sliders icon beside the title opens the Show hives panel. */
+.dash-title { display: flex; align-items: center; gap: 8px; }
+.dash-title .icon-btn { position: relative; }
+.icon-btn.dot::after { content: ''; position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--honey-deep); }
+.sheet-bg { position: fixed; inset: 0; z-index: 70; background: rgba(0, 0, 0, .35); }
+.bottom-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 71; display: flex; flex-direction: column; gap: 10px;
+  padding: 10px 16px calc(16px + var(--safe-bottom)); border-radius: 18px 18px 0 0; background: var(--surface); box-shadow: 0 -6px 24px rgba(0, 0, 0, .2);
+}
+.bottom-sheet h2 { margin: 4px 0 4px; font-size: 18px; }
+.bottom-sheet .hive-filter { margin: 0 0 6px; }
+.sheet-grip { width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto; }
+/* Profile */
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 8px 0 18px; }
+.stat-grid div { display: flex; flex-direction: column; padding: 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+.stat-grid b { font-size: 26px; color: var(--honey-deep); }
+.stat-grid span { font-size: 13px; color: var(--muted); }
+.stat-rows { list-style: none; margin: 0 0 16px; padding: 0; }
+.stat-rows li { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
